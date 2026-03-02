@@ -47,23 +47,23 @@ Leverages **hxpr** as a Content Lake to enable high-quality AI search while:
                           ▼                     ▼
 ┌──────────────────────────────────────┐   ┌──────────────────────────────────────┐
 │ batch-ingester                       │   │ live-ingester                        │
-│ Discovery → Metadata → Queue         │   │ SDK Handlers → Filter → Sync        │
+│ Discovery → Metadata → Queue         │   │ SDK Handlers → Filter → Sync         │
 └──────────────────────────────────────┘   └──────────────────────────────────────┘
                           │                     │
                           └──────────┬──────────┘
                                      ▼
                ┌──────────────────────────────────────────┐
                │ content-lake-common                      │
-               │ Node sync, Transform, Chunk, Embed, ACL │
+               │ Node sync, Transform, Chunk, Embed, ACL  │
                │ `alfresco_modifiedAt` idempotency guard  │
                └──────────────────────────────────────────┘
                                      ▼
                ┌──────────────────────────────────────────┐
-               │ hxpr Content Lake                         │
+               │ hxpr Content Lake                        │
                └──────────────────────────────────────────┘
                                      ▼
                ┌──────────────────────────────────────────┐
-               │ rag-service                               │
+               │ rag-service                              │
                │ Query → Embed → Search → Augment → LLM   │
                └──────────────────────────────────────────┘
 ```
