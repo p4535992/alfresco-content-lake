@@ -21,10 +21,7 @@ spring:
         options:
           model: ${EMBEDDING_MODEL:ai/mxbai-embed-large}
     retry:
-      max-attempts: 2
-      initial-interval: 1000
-      multiplier: 2
-      max-interval: 5000
+      max-attempts: 1
 
 # Alfresco SDK configuration (service account for node fetching)
 content:
