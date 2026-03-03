@@ -216,7 +216,8 @@ export ACTIVEMQ_PASSWORD=admin
 export ALFRESCO_EVENT_TOPIC=alfresco.repo.event2
 
 # AI/Embeddings (both services)
-export MODEL_RUNNER_URL=http://localhost:12434/engines/llama.cpp/v1
+# Spring AI appends /v1 itself; use the Docker Model Runner root URL.
+export MODEL_RUNNER_URL=http://localhost:12434
 export EMBEDDING_MODEL=ai/mxbai-embed-large
 
 # LLM (rag-service only)

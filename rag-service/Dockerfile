@@ -8,9 +8,12 @@ FROM maven:3.9.9-eclipse-temurin-21-alpine AS build
 WORKDIR /workspace
 
 # Copy only POMs first (better cache for dependency download)
+# All module poms are required so Maven can resolve the full reactor
 COPY pom.xml .
 COPY content-lake-common/pom.xml content-lake-common/pom.xml
+COPY content-lake-repo-model/pom.xml content-lake-repo-model/pom.xml
 COPY batch-ingester/pom.xml batch-ingester/pom.xml
+COPY live-ingester/pom.xml live-ingester/pom.xml
 COPY rag-service/pom.xml rag-service/pom.xml
 
 # Pre-fetch dependencies (cached with BuildKit)

@@ -16,6 +16,8 @@ import org.alfresco.contentlake.service.chunking.SimpleChunkingService;
 import org.alfresco.core.model.Node;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -374,9 +376,20 @@ public class NodeSyncService {
     // ──────────────────────────────────────────────────────────────────────
 
     private String extractText(String nodeId, String mimeType, String documentName) throws IOException {
+        if (mimeType == null || mimeType.isBlank()) {
+            log.info("Skipping content extraction for node {}: missing MIME type", nodeId);
+            return null;
+        }
+
         if (isTextMimeType(mimeType)) {
             byte[] content = alfrescoClient.getContent(nodeId);
             return new String(content, StandardCharsets.UTF_8);
+        }
+
+        if (!transformClient.isTransformSupported(mimeType, TARGET_MIME_TYPE)) {
+            log.info("Skipping content extraction for node {}: unsupported transform {} -> {}",
+                    nodeId, mimeType, TARGET_MIME_TYPE);
+            return null;
         }
 
         String tempFileName = resolveTempFileName(nodeId, documentName, mimeType);
@@ -384,9 +397,21 @@ public class NodeSyncService {
         try {
             byte[] out = transformClient.transformSync(temp, mimeType, TARGET_MIME_TYPE);
             return out == null ? null : new String(out, StandardCharsets.UTF_8);
+        } catch (HttpClientErrorException e) {
+            if (isUnsupportedTransformError(e)) {
+                log.info("Skipping content extraction for node {}: transform service does not support {} -> {}",
+                        nodeId, mimeType, TARGET_MIME_TYPE);
+                return null;
+            }
+            throw e;
         } finally {
             deleteTempFile(temp);
         }
+    }
+
+    private boolean isUnsupportedTransformError(HttpClientErrorException e) {
+        return e.getStatusCode() == HttpStatus.BAD_REQUEST
+                && e.getResponseBodyAsString().contains("No transforms for:");
     }
 
     // ──────────────────────────────────────────────────────────────────────
