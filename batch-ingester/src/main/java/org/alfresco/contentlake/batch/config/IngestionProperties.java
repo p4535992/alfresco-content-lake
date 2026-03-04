@@ -17,7 +17,6 @@ public class IngestionProperties {
 
     private List<Source> sources = new ArrayList<>();
     private Exclude exclude = new Exclude();
-    private Scope scope = new Scope();
     private Transform transform = new Transform();
     private Embedding embedding = new Embedding();
 
@@ -26,18 +25,12 @@ public class IngestionProperties {
         private String folder;
         private boolean recursive = true;
         private List<String> types = new ArrayList<>();
-        private List<String> mimeTypes = new ArrayList<>();
     }
 
     @Data
     public static class Exclude {
         private List<String> paths = new ArrayList<>();
         private List<String> aspects = new ArrayList<>();
-    }
-
-    @Data
-    public static class Scope {
-        private List<String> adminUsers = new ArrayList<>(List.of("admin"));
     }
 
     @Data

@@ -10,5 +10,4 @@ public class BatchSyncRequest {
     private List<String> folders;
     private boolean recursive = true;
     private List<String> types;
-    private List<String> mimeTypes;
 }

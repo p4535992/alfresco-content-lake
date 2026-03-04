@@ -154,28 +154,16 @@ If your Alfresco Repository does not yet use `cl:indexed`, the recommended start
 1. Build the project and deploy the repository model JAR to Alfresco Repository.
    After deployment, restart the repository so `cl:indexed` and `cl:excludeFromLake` are available.
 2. Start `batch-ingester`.
-   This gives you the admin endpoint used to mark the first scope root.
-3. Mark the folder you want as the initial scope root.
-   To index every site, mark `Company Home/Sites` with `cl:indexed`.
-4. Run one batch synchronization rooted at that same folder.
-   This performs the initial backfill into Content Lake.
-5. Start `live-ingester`.
+3. Run a batch synchronization against the folder you want to onboard.
+   The ingester automatically adds `cl:indexed` to each root folder if it is not already present, then performs the initial backfill into Content Lake.
+4. Start `live-ingester`.
    Live ingestion then keeps that indexed subtree up to date.
 
 Example for indexing all sites under `Company Home/Sites`:
 
 1. Resolve the Alfresco node id for `Company Home/Sites`.
    You can obtain it from Alfresco UI tools or the Alfresco REST API.
-2. Mark that folder as indexed:
-
-```bash
-curl -X POST http://localhost:9090/api/sync/scope/indexed \
-  -u admin:admin \
-  -H "Content-Type: application/json" \
-  -d '{"nodeId":"SITES_FOLDER_NODE_ID","indexed":true}'
-```
-
-3. Run the initial batch backfill from that folder:
+2. Run the batch sync against that folder:
 
 ```bash
 curl -X POST http://localhost:9090/api/sync/batch \
@@ -184,14 +172,14 @@ curl -X POST http://localhost:9090/api/sync/batch \
   -d '{"folders":["SITES_FOLDER_NODE_ID"],"recursive":true,"types":["cm:content"]}'
 ```
 
-4. After the batch completes, start `live-ingester` so new or changed content under `Company Home/Sites` continues to sync automatically.
+This single call marks `SITES_FOLDER_NODE_ID` with `cl:indexed` (if needed) and ingests all existing content beneath it.
+
+3. After the batch completes, start `live-ingester` so new or changed content under `Company Home/Sites` continues to sync automatically.
 
 Important:
 
-- `cl:indexed` defines repository scope; it does not itself trigger a historical backfill
-- the first batch run is still required to ingest existing content
-- batch discovery root and scope root are related but separate; for the first full load, use the same folder for both
-- if you later want to index only one site, put `cl:indexed` on that site folder instead of on `Company Home/Sites`
+- `cl:indexed` can also be set directly via the Alfresco Repository nodes API or the Content Lake UI extension; the batch ingester sets it automatically only for root folders passed in the request
+- if you later want to index only one site, pass that site folder to `/api/sync/batch` instead of `Company Home/Sites`
 
 ### Environment Variables
 
@@ -239,9 +227,6 @@ export RAG_MAX_CONTEXT_LENGTH=12000
 export TRANSFORM_WORKERS=4
 export EMBEDDING_CHUNK_SIZE=900
 export EMBEDDING_CHUNK_OVERLAP=120
-
-# Scope administration (batch-ingester only)
-export SCOPE_ADMIN_USERS=admin
 ```
 
 ## Authentication
@@ -299,28 +284,6 @@ curl http://localhost:9090/api/sync/status -u admin:admin
 # Job-specific status
 curl http://localhost:9090/api/sync/status/{jobId} -u admin:admin
 ```
-
-#### Manage Repository Scope
-
-Explicitly mark or unmark a folder as a Content Lake scope root:
-
-```bash
-curl -X POST http://localhost:9090/api/sync/scope/indexed \
-  -u admin:admin \
-  -H "Content-Type: application/json" \
-  -d '{"nodeId":"folder-node-id","indexed":true}'
-```
-
-Remove the scope marker:
-
-```bash
-curl -X POST http://localhost:9090/api/sync/scope/indexed \
-  -u admin:admin \
-  -H "Content-Type: application/json" \
-  -d '{"nodeId":"folder-node-id","indexed":false}'
-```
-
-Only users listed in `SCOPE_ADMIN_USERS` can call this endpoint. The actual repository update is performed with the internal Alfresco client configured for the batch ingester.
 
 ### RAG Service (port 9091)
 
@@ -445,7 +408,6 @@ ingestion:
     - folder: your-folder-node-id
       recursive: true
       types: [cm:content]
-      mime-types: []  # Empty = all types
   exclude:
     paths: ["*/surf-config/*", "*/thumbnails/*"]
     aspects: [cm:workingcopy]

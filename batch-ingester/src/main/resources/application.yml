@@ -59,15 +59,12 @@ ingestion:
       recursive: true
       types:
         - cm:content
-      mime-types: []  # Empty means all mime types (transformation will handle non-text)
   exclude:
     paths:
       - "*/surf-config/*"
       - "*/thumbnails/*"
     aspects:
       - cm:workingcopy
-  scope:
-    admin-users: ${SCOPE_ADMIN_USERS:admin}
   transform:
     worker-threads: ${TRANSFORM_WORKERS:4}
     queue-capacity: ${TRANSFORM_QUEUE_CAPACITY:1000}
