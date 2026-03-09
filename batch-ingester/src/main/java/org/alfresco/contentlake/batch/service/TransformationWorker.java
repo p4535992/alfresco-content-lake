@@ -81,6 +81,7 @@ public class TransformationWorker {
         try {
             nodeSyncService.processContent(
                     task.getHxprDocumentId(),
+                    task.getIngestProperties(),
                     task.getNodeId(),
                     task.getMimeType(),
                     task.getDocumentName(),

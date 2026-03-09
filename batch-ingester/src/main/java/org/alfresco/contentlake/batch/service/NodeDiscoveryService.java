@@ -101,6 +101,10 @@ public class NodeDiscoveryService {
             if (!scopeResolver.shouldTraverse(node)) {
                 return Stream.empty();
             }
+            if (scopeResolver.isExcludedBySelfOrAncestor(node)) {
+                log.debug("Skipping excluded folder subtree {}", node.getId());
+                return Stream.empty();
+            }
             return discoverFromFolder(node.getId(), true, types);
         }
 

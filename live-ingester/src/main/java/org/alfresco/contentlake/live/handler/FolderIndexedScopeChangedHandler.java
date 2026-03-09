@@ -7,6 +7,9 @@ import org.alfresco.event.sdk.handling.filter.AspectAddedFilter;
 import org.alfresco.event.sdk.handling.filter.AspectRemovedFilter;
 import org.alfresco.event.sdk.handling.filter.EventFilter;
 import org.alfresco.event.sdk.handling.filter.IsFolderFilter;
+import org.alfresco.event.sdk.handling.filter.PropertyAddedFilter;
+import org.alfresco.event.sdk.handling.filter.PropertyChangedFilter;
+import org.alfresco.event.sdk.handling.filter.PropertyRemovedFilter;
 import org.alfresco.event.sdk.handling.handler.OnNodeUpdatedEventHandler;
 import org.alfresco.repo.event.v1.model.DataAttributes;
 import org.alfresco.repo.event.v1.model.RepoEvent;
@@ -29,6 +32,9 @@ public class FolderIndexedScopeChangedHandler implements OnNodeUpdatedEventHandl
         return IsFolderFilter.get().and(
                 AspectAddedFilter.of(ContentLakeScopeResolver.INDEXED_ASPECT)
                         .or(AspectRemovedFilter.of(ContentLakeScopeResolver.INDEXED_ASPECT))
+                        .or(PropertyAddedFilter.of(ContentLakeScopeResolver.EXCLUDE_FROM_LAKE_PROPERTY))
+                        .or(PropertyChangedFilter.of(ContentLakeScopeResolver.EXCLUDE_FROM_LAKE_PROPERTY))
+                        .or(PropertyRemovedFilter.of(ContentLakeScopeResolver.EXCLUDE_FROM_LAKE_PROPERTY))
         );
     }
 }

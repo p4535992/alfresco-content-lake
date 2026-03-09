@@ -3,6 +3,7 @@ package org.alfresco.contentlake.batch.model;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.Map;
 
 @Data
 public class TransformationTask {
@@ -19,6 +20,12 @@ public class TransformationTask {
     /** Repository path (e.g. "/Company Home/Reports"). Used for metadata-enriched embedding. */
     private String documentPath;
 
+    /**
+     * {@code cin_ingestProperties} snapshot from the metadata phase.
+     * Forwarded to {@code processContent} so the status patch does not need a prior GET.
+     */
+    private Map<String, Object> ingestProperties;
+
     public TransformationTask(String nodeId, String hxprDocumentId, String mimeType) {
         this.nodeId = nodeId;
         this.hxprDocumentId = hxprDocumentId;
@@ -28,9 +35,11 @@ public class TransformationTask {
     }
 
     public TransformationTask(String nodeId, String hxprDocumentId, String mimeType,
-                              String documentName, String documentPath) {
+                              String documentName, String documentPath,
+                              Map<String, Object> ingestProperties) {
         this(nodeId, hxprDocumentId, mimeType);
         this.documentName = documentName;
         this.documentPath = documentPath;
+        this.ingestProperties = ingestProperties;
     }
 }

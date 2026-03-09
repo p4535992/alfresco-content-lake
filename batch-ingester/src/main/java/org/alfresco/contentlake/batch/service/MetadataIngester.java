@@ -30,7 +30,8 @@ public class MetadataIngester {
                 result.hxprDocId(),
                 result.mimeType(),
                 result.documentName(),
-                result.documentPath()
+                result.documentPath(),
+                result.ingestProperties()
         );
     }
 }

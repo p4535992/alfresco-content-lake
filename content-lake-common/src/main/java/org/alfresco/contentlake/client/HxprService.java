@@ -15,6 +15,8 @@ import org.springframework.web.util.UriUtils;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -32,6 +34,7 @@ public class HxprService {
 
     private static final String EMBED_MIXIN = "SysEmbed";
     private static final String SYS_FOLDER = "SysFolder";
+    private static final String SYS_FILE = "SysFile";
     private static final String DEFAULT_QUERY = "SELECT * FROM SysContent";
 
     private final HxprDocumentApi documentApi;
@@ -211,7 +214,7 @@ public class HxprService {
      */
     public HxprDocument findByNodeId(String nodeId, String sourceId) {
         try {
-            String hxql = "SELECT * FROM SysContent WHERE sys_primaryType = 'SysFile' AND cin_id = '"
+            String hxql = "SELECT * FROM SysContent WHERE sys_primaryType = '" + SYS_FILE + "' AND cin_id = '"
                     + escapeHxql(nodeId) + "'";
             if (sourceId != null && !sourceId.isBlank()) {
                 hxql += " AND cin_sourceId = '" + escapeHxql(sourceId) + "'";
@@ -229,6 +232,49 @@ public class HxprService {
         }
 
         return null;
+    }
+
+    /**
+     * Finds multiple documents keyed by Alfresco node identifier.
+     */
+    public Map<String, HxprDocument> findByNodeIds(Collection<String> nodeIds, String sourceId) {
+        List<String> sanitizedIds = nodeIds == null
+                ? List.of()
+                : nodeIds.stream()
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+
+        if (sanitizedIds.isEmpty()) {
+            return Map.of();
+        }
+
+        try {
+            String idPredicate = sanitizedIds.stream()
+                    .map(id -> "cin_id = '" + escapeHxql(id) + "'")
+                    .collect(Collectors.joining(" OR ", "(", ")"));
+
+            String hxql = "SELECT * FROM SysContent WHERE sys_primaryType = '" + SYS_FILE + "' AND " + idPredicate;
+            if (sourceId != null && !sourceId.isBlank()) {
+                hxql += " AND cin_sourceId = '" + escapeHxql(sourceId) + "'";
+            }
+
+            HxprDocument.QueryResult result = query(hxql, sanitizedIds.size(), 0);
+            if (result == null || result.getDocuments() == null) {
+                return Map.of();
+            }
+
+            Map<String, HxprDocument> documentsByNodeId = new LinkedHashMap<>();
+            for (HxprDocument document : result.getDocuments()) {
+                if (document.getCinId() != null && !document.getCinId().isBlank()) {
+                    documentsByNodeId.put(document.getCinId(), document);
+                }
+            }
+            return documentsByNodeId;
+        } catch (Exception e) {
+            log.warn("Failed to query hxpr for {} node ids: {}", sanitizedIds.size(), e.getMessage());
+            return Map.of();
+        }
     }
 
     /**

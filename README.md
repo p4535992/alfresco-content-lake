@@ -134,7 +134,7 @@ docker-compose up
 The batch and live ingesters now rely on an Alfresco content model for scope control:
 
 - `cl:indexed` marks a folder subtree as in scope for Content Lake ingestion
-- `cl:excludeFromLake` lets a child node opt out even when an ancestor folder is indexed
+- `cl:excludeFromLake` lets a file opt out, or a folder subtree opt out, even when an ancestor folder is indexed
 
 Build artifact:
 
@@ -179,6 +179,7 @@ This single call marks `SITES_FOLDER_NODE_ID` with `cl:indexed` (if needed) and 
 Important:
 
 - `cl:indexed` can also be set directly via the Alfresco Repository nodes API or the Content Lake UI extension; the batch ingester sets it automatically only for root folders passed in the request
+- `cl:excludeFromLake` on a folder removes that folder's full subtree from Content Lake scope; batch discovery skips it and live reconciliation deletes previously ingested descendants
 - if you later want to index only one site, pass that site folder to `/api/sync/batch` instead of `Company Home/Sites`
 
 ### Environment Variables
@@ -283,6 +284,19 @@ curl http://localhost:9090/api/sync/status -u admin:admin
 
 # Job-specific status
 curl http://localhost:9090/api/sync/status/{jobId} -u admin:admin
+```
+
+#### Query Node Status
+
+```bash
+# Single node
+curl http://localhost:9090/api/content-lake/nodes/{nodeId}/status -u admin:admin
+
+# Bulk node list
+curl -X POST http://localhost:9090/api/content-lake/nodes/status \
+  -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{"nodeIds":["node-id-1","node-id-2"]}'
 ```
 
 ### RAG Service (port 9091)

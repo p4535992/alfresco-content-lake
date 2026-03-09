@@ -8,6 +8,8 @@ import org.alfresco.contentlake.client.HxprService;
 import org.alfresco.contentlake.client.TransformClient;
 import org.alfresco.contentlake.hxpr.api.model.ACE;
 import org.alfresco.contentlake.hxpr.api.model.Group;
+import org.alfresco.contentlake.model.ContentLakeIngestProperties;
+import org.alfresco.contentlake.model.ContentLakeNodeStatus;
 import org.alfresco.contentlake.hxpr.api.model.User;
 import org.alfresco.contentlake.model.Chunk;
 import org.alfresco.contentlake.model.HxprDocument;
@@ -53,12 +55,14 @@ public class NodeSyncService {
     private static final String MIXIN_CIN_REMOTE = "CinRemote";
 
     /* ---- cin_ingestProperties keys ---- */
-    private static final String P_ALF_NODE_ID     = "alfresco_nodeId";
-    private static final String P_ALF_REPO_ID     = "alfresco_repositoryId";
-    private static final String P_ALF_PATH        = "alfresco_path";
-    private static final String P_ALF_NAME        = "alfresco_name";
-    private static final String P_ALF_MIME        = "alfresco_mimeType";
-    private static final String P_ALF_MODIFIED_AT = "alfresco_modifiedAt";
+    private static final String P_ALF_NODE_ID     = ContentLakeIngestProperties.ALFRESCO_NODE_ID;
+    private static final String P_ALF_REPO_ID     = ContentLakeIngestProperties.ALFRESCO_REPOSITORY_ID;
+    private static final String P_ALF_PATH        = ContentLakeIngestProperties.ALFRESCO_PATH;
+    private static final String P_ALF_NAME        = ContentLakeIngestProperties.ALFRESCO_NAME;
+    private static final String P_ALF_MIME        = ContentLakeIngestProperties.ALFRESCO_MIME_TYPE;
+    private static final String P_ALF_MODIFIED_AT = ContentLakeIngestProperties.ALFRESCO_MODIFIED_AT;
+    private static final String P_CL_SYNC_STATUS  = ContentLakeIngestProperties.CONTENT_LAKE_SYNC_STATUS;
+    private static final String P_CL_SYNC_ERROR   = ContentLakeIngestProperties.CONTENT_LAKE_SYNC_ERROR;
 
     /* ---- ACL constants ---- */
     private static final String EVERYONE_PRINCIPAL = "__Everyone__";
@@ -113,7 +117,7 @@ public class NodeSyncService {
         String documentPath = node.getPath() != null ? node.getPath().getName() : null;
 
         try {
-            processContent(doc.getSysId(), nodeId, mimeType, node.getName(), documentPath);
+            processContent(doc.getSysId(), doc.getCinIngestProperties(), nodeId, mimeType, node.getName(), documentPath);
         } catch (Exception e) {
             log.error("Content processing failed for node {}: {}", nodeId, e.getMessage(), e);
             // Metadata is already persisted; content will be retried on next event/batch.
@@ -143,7 +147,8 @@ public class NodeSyncService {
                     node.getContent() != null ? node.getContent().getMimeType() : null,
                     node.getName(),
                     node.getPath() != null ? node.getPath().getName() : null,
-                    true);
+                    true,
+                    null);
         }
 
         HxprDocument doc = (existing != null)
@@ -154,7 +159,8 @@ public class NodeSyncService {
                 node.getContent() != null ? node.getContent().getMimeType() : null,
                 node.getName(),
                 node.getPath() != null ? node.getPath().getName() : null,
-                false);
+                false,
+                doc.getCinIngestProperties());
     }
 
     /**
@@ -162,19 +168,25 @@ public class NodeSyncService {
      *
      * <p>Can be called standalone when the caller already has the hxpr document
      * id from a prior metadata ingestion (batch-ingester's TransformationWorker).</p>
+     *
+     * @param baseIngestProps the {@code cin_ingestProperties} map from the metadata
+     *                        phase; used to build the status patch without an extra GET
      */
-    public void processContent(String hxprDocId, String nodeId, String mimeType,
-                                String documentName, String documentPath) {
+    public void processContent(String hxprDocId, Map<String, Object> baseIngestProps,
+                               String nodeId, String mimeType,
+                               String documentName, String documentPath) {
         try {
             String text = extractText(nodeId, mimeType, documentName);
             if (text == null || text.isBlank()) {
                 log.warn("Empty text for node {} ({})", nodeId, mimeType);
+                patchSyncState(hxprDocId, baseIngestProps, ContentLakeNodeStatus.Status.INDEXED, null);
                 return;
             }
 
             List<Chunk> chunks = chunkingService.chunk(text, nodeId, mimeType);
             if (chunks.isEmpty()) {
                 log.info("No chunks for node {}", nodeId);
+                patchSyncState(hxprDocId, baseIngestProps, ContentLakeNodeStatus.Status.INDEXED, null);
                 return;
             }
 
@@ -187,10 +199,11 @@ public class NodeSyncService {
             List<HxprEmbedding> hxprEmbeddings = toHxprEmbeddings(embedded);
             hxprService.updateEmbeddings(hxprDocId, hxprEmbeddings);
 
-            updateFulltext(hxprDocId, text);
+            updateFulltextWithStatus(hxprDocId, text, baseIngestProps);
 
             log.info("Completed sync for node {}: {} embeddings", nodeId, hxprEmbeddings.size());
         } catch (Exception e) {
+            patchSyncState(hxprDocId, baseIngestProps, ContentLakeNodeStatus.Status.FAILED, e.getMessage());
             log.error("Content processing failed for node {}", nodeId, e);
             throw new RuntimeException("Content processing failed", e);
         }
@@ -324,8 +337,7 @@ public class NodeSyncService {
         doc.setCinIngestProperties(props);
         doc.setCinIngestPropertyNames(new ArrayList<>(props.keySet()));
 
-        doc.setSyncStatus(HxprDocument.SyncStatus.PENDING);
-        doc.setSyncError(null);
+        applySyncState(doc, ContentLakeNodeStatus.Status.PENDING, null);
 
         applyFlattenedAlfrescoFields(doc, node, doc.getCinSourceId(), readerList);
         return doc;
@@ -448,10 +460,77 @@ public class NodeSyncService {
         }
     }
 
-    private void updateFulltext(String hxprDocId, String text) {
+    /**
+     * Writes fulltext and INDEXED status in a single PATCH, eliminating a separate
+     * round-trip compared to calling updateFulltext + a status update separately.
+     */
+    private void updateFulltextWithStatus(String hxprDocId, String text, Map<String, Object> baseIngestProps) {
+        Map<String, Object> props = buildStatusedProps(baseIngestProps, ContentLakeNodeStatus.Status.INDEXED, null);
         HxprDocument update = new HxprDocument();
         update.setSysFulltextBinary(text);
+        update.setSyncStatus(HxprDocument.SyncStatus.INDEXED);
+        update.setSyncError(null);
+        update.setCinIngestProperties(props);
+        update.setCinIngestPropertyNames(new ArrayList<>(props.keySet()));
         documentApi.updateById(hxprDocId, update);
+    }
+
+    /**
+     * Patches only the sync-status fields without fetching the document first.
+     * {@code baseIngestProps} carries all non-status properties from the metadata phase.
+     */
+    private void patchSyncState(String hxprDocId, Map<String, Object> baseIngestProps,
+                                ContentLakeNodeStatus.Status status, String error) {
+        try {
+            Map<String, Object> props = buildStatusedProps(baseIngestProps, status, error);
+            HxprDocument update = new HxprDocument();
+            update.setSyncStatus(toInternalStatus(status));
+            update.setSyncError(error);
+            update.setCinIngestProperties(props);
+            update.setCinIngestPropertyNames(new ArrayList<>(props.keySet()));
+            documentApi.updateById(hxprDocId, update);
+        } catch (Exception e) {
+            log.warn("Failed to update sync status {} for document {}: {}", status, hxprDocId, e.getMessage());
+        }
+    }
+
+    private Map<String, Object> buildStatusedProps(Map<String, Object> baseProps,
+                                                   ContentLakeNodeStatus.Status status, String error) {
+        Map<String, Object> props = baseProps != null ? new LinkedHashMap<>(baseProps) : new LinkedHashMap<>();
+        props.put(P_CL_SYNC_STATUS, status.name());
+        if (error == null || error.isBlank()) {
+            props.remove(P_CL_SYNC_ERROR);
+        } else {
+            props.put(P_CL_SYNC_ERROR, error);
+        }
+        return props;
+    }
+
+    private void applySyncState(HxprDocument doc, ContentLakeNodeStatus.Status status, String error) {
+        doc.setSyncStatus(toInternalStatus(status));
+        doc.setSyncError(error);
+
+        Map<String, Object> props = doc.getCinIngestProperties() != null
+                ? new LinkedHashMap<>(doc.getCinIngestProperties())
+                : new LinkedHashMap<>();
+
+        props.put(P_CL_SYNC_STATUS, status.name());
+        if (error == null || error.isBlank()) {
+            props.remove(P_CL_SYNC_ERROR);
+        } else {
+            props.put(P_CL_SYNC_ERROR, error);
+        }
+
+        doc.setCinIngestProperties(props);
+        doc.setCinIngestPropertyNames(new ArrayList<>(props.keySet()));
+    }
+
+    private HxprDocument.SyncStatus toInternalStatus(ContentLakeNodeStatus.Status status) {
+        return switch (status) {
+            case PENDING -> HxprDocument.SyncStatus.PENDING;
+            case INDEXED -> HxprDocument.SyncStatus.INDEXED;
+            case FAILED -> HxprDocument.SyncStatus.FAILED;
+        };
     }
 
     private String buildDocumentContext(String documentName, String documentPath) {
@@ -611,12 +690,15 @@ public class NodeSyncService {
     /**
      * Lightweight result from metadata ingestion.
      *
-     * @param hxprDocId    Content Lake document identifier
-     * @param nodeId       Alfresco node identifier
-     * @param mimeType     source MIME type
-     * @param documentName node name
-     * @param documentPath repository path
-     * @param skipped      {@code true} when the node was skipped (already current)
+     * @param hxprDocId        Content Lake document identifier
+     * @param nodeId           Alfresco node identifier
+     * @param mimeType         source MIME type
+     * @param documentName     node name
+     * @param documentPath     repository path
+     * @param skipped          {@code true} when the node was skipped (already current)
+     * @param ingestProperties {@code cin_ingestProperties} snapshot from the metadata
+     *                         phase; forwarded to {@link #processContent} so the status
+     *                         patch does not need a prior GET
      */
     public record SyncResult(
             String hxprDocId,
@@ -624,6 +706,7 @@ public class NodeSyncService {
             String mimeType,
             String documentName,
             String documentPath,
-            boolean skipped
+            boolean skipped,
+            Map<String, Object> ingestProperties
     ) {}
 }

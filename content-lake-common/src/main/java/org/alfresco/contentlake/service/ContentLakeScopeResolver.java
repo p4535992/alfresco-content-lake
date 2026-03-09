@@ -14,9 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * Shared scope rules used by both ingesters to decide whether a node belongs in
  * Content Lake.
  *
- * <p>Business scope is controlled by {@code cl:indexed} on any ancestor folder.
- * Technical exclusions such as working copies and thumbnail paths are still
- * applied first.</p>
+ * <p>Business scope is controlled by {@code cl:indexed} on any ancestor folder,
+ * with {@code cl:excludeFromLake} able to opt individual files or entire folder
+ * subtrees back out. Technical exclusions such as working copies and thumbnail
+ * paths are still applied first.</p>
  *
  * <h3>Ancestor scope check</h3>
  * The Alfresco REST API does not populate aspect names on path elements, so ancestor
@@ -37,11 +38,11 @@ public class ContentLakeScopeResolver {
     private final AlfrescoClient alfrescoClient;
 
     /**
-     * Cache: folderId → whether that folder has the {@code cl:indexed} aspect.
+     * Cache: folderId → the folder's Content Lake scope state.
      * Bounded to {@value CACHE_MAX_SIZE} entries; invalidated explicitly on scope
      * changes via {@link #invalidateFolderScope(String)}.
      */
-    private final ConcurrentHashMap<String, Boolean> folderAspectCache = new ConcurrentHashMap<>(256);
+    private final ConcurrentHashMap<String, FolderScopeState> folderScopeCache = new ConcurrentHashMap<>(256);
 
     public ContentLakeScopeResolver(Collection<String> excludedPathPatterns,
                                     Collection<String> excludedAspects,
@@ -77,7 +78,25 @@ public class ContentLakeScopeResolver {
         if (!shouldTraverse(node)) {
             return false;
         }
-        if (isExcludedFromLake(node)) {
+        if (isExcludedBySelfOrAncestor(node)) {
+            return false;
+        }
+
+        return hasIndexedAspect(node.getAspectNames()) || hasIndexedAncestor(node);
+    }
+
+    /**
+     * Returns {@code true} when a folder itself belongs to an indexed subtree and
+     * is not excluded by a folder-level override.
+     */
+    public boolean isFolderInScope(Node node) {
+        if (node == null || !Boolean.TRUE.equals(node.isIsFolder())) {
+            return false;
+        }
+        if (!shouldTraverse(node)) {
+            return false;
+        }
+        if (isExcludedBySelfOrAncestor(node)) {
             return false;
         }
 
@@ -102,7 +121,7 @@ public class ContentLakeScopeResolver {
      * so that subsequent {@link #isInScope} calls reflect the updated aspect state.</p>
      */
     public void invalidateFolderScope(String folderId) {
-        folderAspectCache.remove(folderId);
+        folderScopeCache.remove(folderId);
     }
 
     /**
@@ -122,7 +141,24 @@ public class ContentLakeScopeResolver {
             if (element.getId() == null) {
                 continue;
             }
-            if (isFolderIndexed(element.getId())) {
+            if (getFolderScopeState(element.getId()).indexed()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean hasExcludedAncestor(Node node) {
+        if (node.getPath() == null || node.getPath().getElements() == null) {
+            return false;
+        }
+
+        for (PathElement element : node.getPath().getElements()) {
+            if (element.getId() == null) {
+                continue;
+            }
+            if (getFolderScopeState(element.getId()).excluded()) {
                 return true;
             }
         }
@@ -134,28 +170,31 @@ public class ContentLakeScopeResolver {
      * Checks whether the folder with the given ID has {@code cl:indexed}, using the
      * local cache to avoid repeated REST calls.
      */
-    private boolean isFolderIndexed(String folderId) {
-        Boolean cached = folderAspectCache.get(folderId);
+    private FolderScopeState getFolderScopeState(String folderId) {
+        FolderScopeState cached = folderScopeCache.get(folderId);
         if (cached != null) {
             return cached;
         }
 
         Node folder = alfrescoClient.getNode(folderId);
-        boolean indexed = folder != null && hasIndexedAspect(folder.getAspectNames());
+        FolderScopeState state = new FolderScopeState(
+                folder != null && hasIndexedAspect(folder.getAspectNames()),
+                folder != null && isExcludedFromLake(folder)
+        );
 
         // Store only if the cache has not yet reached its capacity limit.
-        if (folderAspectCache.size() < CACHE_MAX_SIZE) {
-            folderAspectCache.putIfAbsent(folderId, indexed);
+        if (folderScopeCache.size() < CACHE_MAX_SIZE) {
+            folderScopeCache.putIfAbsent(folderId, state);
         }
 
-        return indexed;
+        return state;
     }
 
     private boolean hasIndexedAspect(Collection<String> aspects) {
         return aspects != null && aspects.contains(INDEXED_ASPECT);
     }
 
-    private boolean isExcludedFromLake(Node node) {
+    public boolean isExcludedFromLake(Node node) {
         Object properties = node.getProperties();
         if (!(properties instanceof Map<?, ?> propertyMap)) {
             return false;
@@ -171,6 +210,17 @@ public class ContentLakeScopeResolver {
         return false;
     }
 
+    /**
+     * Returns {@code true} when the node or one of its ancestor folders has an
+     * active {@code cl:excludeFromLake} override.
+     */
+    public boolean isExcludedBySelfOrAncestor(Node node) {
+        if (node == null) {
+            return false;
+        }
+        return isExcludedFromLake(node) || hasExcludedAncestor(node);
+    }
+
     private boolean matchesAny(String path, List<String> patterns) {
         if (path == null || path.isBlank() || patterns.isEmpty()) {
             return false;
@@ -184,4 +234,6 @@ public class ContentLakeScopeResolver {
 
         return false;
     }
+
+    private record FolderScopeState(boolean indexed, boolean excluded) {}
 }
