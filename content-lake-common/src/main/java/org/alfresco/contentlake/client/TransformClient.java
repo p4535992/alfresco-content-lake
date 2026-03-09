@@ -7,11 +7,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -119,7 +121,7 @@ public class TransformClient {
                     .body(byte[].class);
 
         } catch (RestClientException e) {
-            log.error("Transform request failed for {} -> {}: {}", sourceMimeType, targetMimeType, e.getMessage());
+            logTransformFailure(sourceMimeType, targetMimeType, e);
             throw e;
         }
     }
@@ -151,7 +153,7 @@ public class TransformClient {
                     .body(byte[].class);
 
         } catch (RestClientException e) {
-            log.error("Transform request failed for {} -> {}: {}", sourceMimeType, targetMimeType, e.getMessage());
+            logTransformFailure(sourceMimeType, targetMimeType, e);
             throw e;
         }
     }
@@ -207,6 +209,23 @@ public class TransformClient {
             log.debug("Could not read Transform Core AIO config from /transform/config: {}", e.getMessage());
             return cachedConfig; // maybe stale, but better than nothing
         }
+    }
+
+    private void logTransformFailure(String sourceMimeType, String targetMimeType, RestClientException e) {
+        if (isUnsupportedTransformError(e)) {
+            log.info("Transform unavailable for {} -> {}: {}", sourceMimeType, targetMimeType, e.getMessage());
+            return;
+        }
+        log.error("Transform request failed for {} -> {}: {}", sourceMimeType, targetMimeType, e.getMessage());
+    }
+
+    private boolean isUnsupportedTransformError(RestClientException e) {
+        if (!(e instanceof HttpClientErrorException httpError)) {
+            return false;
+        }
+        return httpError.getStatusCode() == HttpStatus.BAD_REQUEST
+                && httpError.getResponseBodyAsString() != null
+                && httpError.getResponseBodyAsString().contains("No transforms for:");
     }
 
     /**

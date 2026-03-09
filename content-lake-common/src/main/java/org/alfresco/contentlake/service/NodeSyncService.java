@@ -71,6 +71,8 @@ public class NodeSyncService {
 
     /* ---- text extraction helpers ---- */
     private static final String TARGET_MIME_TYPE = "text/plain";
+    private static final String ERR_NO_EXTRACTABLE_TEXT = "No extractable text produced for mimeType=%s";
+    private static final String ERR_NO_CHUNKS = "No chunks produced from extracted text";
     private static final Set<String> TEXT_MIME_TYPES = Set.of(
             "text/plain", "text/html", "text/xml", "text/csv",
             "text/markdown", "application/json", "application/xml",
@@ -179,14 +181,19 @@ public class NodeSyncService {
             String text = extractText(nodeId, mimeType, documentName);
             if (text == null || text.isBlank()) {
                 log.warn("Empty text for node {} ({})", nodeId, mimeType);
-                patchSyncState(hxprDocId, baseIngestProps, ContentLakeNodeStatus.Status.INDEXED, null);
+                patchSyncState(
+                        hxprDocId,
+                        baseIngestProps,
+                        ContentLakeNodeStatus.Status.FAILED,
+                        String.format(ERR_NO_EXTRACTABLE_TEXT, safeMimeType(mimeType))
+                );
                 return;
             }
 
             List<Chunk> chunks = chunkingService.chunk(text, nodeId, mimeType);
             if (chunks.isEmpty()) {
-                log.info("No chunks for node {}", nodeId);
-                patchSyncState(hxprDocId, baseIngestProps, ContentLakeNodeStatus.Status.INDEXED, null);
+                log.warn("No chunks for node {}", nodeId);
+                patchSyncState(hxprDocId, baseIngestProps, ContentLakeNodeStatus.Status.FAILED, ERR_NO_CHUNKS);
                 return;
             }
 
@@ -618,6 +625,13 @@ public class NodeSyncService {
     private static String joinPath(String parent, String leaf) {
         String p = normalizeAbsolutePath(parent);
         return "/".equals(p) ? "/" + leaf : p + "/" + leaf;
+    }
+
+    private String safeMimeType(String mimeType) {
+        if (mimeType == null || mimeType.isBlank()) {
+            return "unknown";
+        }
+        return mimeType;
     }
 
     private List<String> mergeMixinTypes(List<String> existingMixins, List<String> desiredMixins) {
