@@ -39,6 +39,9 @@ public class RagPromptResponse {
     /** LLM model used for generation. */
     private String model;
 
+    /** Total token count reported for this answer (prompt + completion), when available. */
+    private Integer tokenCount;
+
     /** Time spent on semantic search (ms). */
     private long searchTimeMs;
 

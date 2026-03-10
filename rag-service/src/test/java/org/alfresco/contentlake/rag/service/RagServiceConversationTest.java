@@ -15,6 +15,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
 import java.util.List;
@@ -207,5 +209,68 @@ class RagServiceConversationTest {
         assertThat(response.getRetrievalQuery()).isEqualTo("follow up");
         verifyNoInteractions(queryReformulationService);
         verify(rerankService).rerank(eq("follow up"), anyList());
+    }
+
+    @Test
+    void prompt_withRetrievedContext_callsLlmAndMapsMetadata() {
+        properties.getConversation().setEnabled(false);
+
+        SemanticSearchResponse.SourceDocument source = SemanticSearchResponse.SourceDocument.builder()
+                .documentId("doc-1")
+                .nodeId("node-1")
+                .name("Q4.pdf")
+                .path("/Company Home/Q4.pdf")
+                .build();
+        SemanticSearchResponse.SearchHit hit = SemanticSearchResponse.SearchHit.builder()
+                .rank(1)
+                .score(0.91d)
+                .chunkText("Revenue increased by 12% in Q4.")
+                .sourceDocument(source)
+                .build();
+
+        when(semanticSearchService.search(any())).thenReturn(SemanticSearchResponse.builder()
+                .query("What changed in Q4?")
+                .searchTimeMs(12)
+                .results(List.of(hit))
+                .build());
+        when(rerankService.rerank(eq("What changed in Q4?"), anyList())).thenReturn(List.of(hit));
+
+        var chatResponse = mock(org.springframework.ai.chat.model.ChatResponse.class, RETURNS_DEEP_STUBS);
+        when(chatResponse.getResult().getOutput().getText()).thenReturn("Revenue increased by 12% in Q4.");
+        when(chatResponse.getMetadata().getModel()).thenReturn("ai/gpt-oss");
+        when(chatResponse.getMetadata().getUsage().getTotalTokens()).thenReturn(321);
+        when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+        RagPromptResponse response = ragService.prompt(RagPromptRequest.builder()
+                .question("What changed in Q4?")
+                .build());
+
+        assertThat(response.getAnswer()).isEqualTo("Revenue increased by 12% in Q4.");
+        assertThat(response.getModel()).isEqualTo("ai/gpt-oss");
+        assertThat(response.getTokenCount()).isEqualTo(321);
+        assertThat(response.getSourcesUsed()).isEqualTo(1);
+        verify(chatModel).call(any(Prompt.class));
+        verifyNoInteractions(conversationMemoryService, queryReformulationService, securityContextService);
+    }
+
+    @Test
+    void streamPrompt_withoutRetrievedContext_streamsFallbackWithoutLlmCall() {
+        when(conversationMemoryService.getRecentTurns("session-stream")).thenReturn(List.of());
+        when(semanticSearchService.search(any())).thenReturn(SemanticSearchResponse.builder()
+                .query("question")
+                .searchTimeMs(3)
+                .results(List.of())
+                .build());
+        when(rerankService.rerank(eq("question"), anyList())).thenReturn(List.of());
+
+        SseEmitter emitter = ragService.streamPrompt(RagPromptRequest.builder()
+                .question("question")
+                .sessionId("session-stream")
+                .build());
+
+        assertThat(emitter).isNotNull();
+        verify(conversationMemoryService).appendUserTurn("session-stream", "question");
+        verify(conversationMemoryService).appendAssistantTurn(eq("session-stream"), contains("I couldn't find any relevant documents"));
+        verifyNoInteractions(chatModel);
     }
 }

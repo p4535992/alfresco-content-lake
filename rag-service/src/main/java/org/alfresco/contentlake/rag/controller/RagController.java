@@ -8,8 +8,10 @@ import org.alfresco.contentlake.rag.service.RagService;
 import org.alfresco.contentlake.rag.service.SemanticSearchService;
 import org.alfresco.contentlake.rag.model.SemanticSearchRequest;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -57,7 +59,7 @@ public class RagController {
      */
     @PostMapping("/prompt")
     public ResponseEntity<RagPromptResponse> prompt(@RequestBody RagPromptRequest request) {
-        if (request.getQuestion() == null || request.getQuestion().isBlank()) {
+        if (hasInvalidQuestion(request)) {
             return ResponseEntity.badRequest().body(
                     RagPromptResponse.builder()
                             .answer("Question is required")
@@ -73,6 +75,38 @@ public class RagController {
 
         RagPromptResponse response = ragService.prompt(request);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Streams RAG answer generation over SSE (canonical GET contract).
+     *
+     * <p>Request parameters map to the same fields as {@code /prompt}.</p>
+     */
+    @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<SseEmitter> streamGet(@ModelAttribute RagPromptRequest request) {
+        if (hasInvalidQuestion(request)) {
+            return ResponseEntity.badRequest().build();
+        }
+        log.info("RAG stream request (GET): question=\"{}\", sessionId={}, topK={}, minScore={}",
+                request.getQuestion(), request.getSessionId(), request.getTopK(), request.getMinScore());
+        return ResponseEntity.ok(ragService.streamPrompt(request));
+    }
+
+    /**
+     * Streams RAG answer generation over SSE (compatibility POST contract).
+     *
+     * <p>This exists to keep current UI integration working while GET remains canonical.</p>
+     */
+    @PostMapping(value = "/chat/stream",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<SseEmitter> streamPost(@RequestBody RagPromptRequest request) {
+        if (hasInvalidQuestion(request)) {
+            return ResponseEntity.badRequest().build();
+        }
+        log.info("RAG stream request (POST): question=\"{}\", sessionId={}, topK={}, minScore={}",
+                request.getQuestion(), request.getSessionId(), request.getTopK(), request.getMinScore());
+        return ResponseEntity.ok(ragService.streamPrompt(request));
     }
 
     /**
@@ -129,5 +163,9 @@ public class RagController {
         health.put("status", allUp ? "UP" : "DEGRADED");
 
         return ResponseEntity.ok(health);
+    }
+
+    private boolean hasInvalidQuestion(RagPromptRequest request) {
+        return request == null || request.getQuestion() == null || request.getQuestion().isBlank();
     }
 }

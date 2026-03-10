@@ -364,6 +364,7 @@ Response:
   "retrievalQuery": "what are the key findings in the q4 report",
   "historyTurnsUsed": 2,
   "model": "ai/gpt-oss",
+  "tokenCount": 672,
   "searchTimeMs": 245,
   "generationTimeMs": 1830,
   "totalTimeMs": 2075,
@@ -397,6 +398,84 @@ Response:
 | `sessionId` | String | Effective session id used by server |
 | `retrievalQuery` | String | Query actually sent to retrieval (may be reformulated) |
 | `historyTurnsUsed` | Integer | Number of prior turns included in this generation |
+| `tokenCount` | Integer | Total token usage (prompt + completion) when provider reports it |
+
+#### Chat Stream (SSE)
+
+Streaming responses are available with Server-Sent Events (SSE).
+
+- Canonical endpoint: `GET /api/rag/chat/stream`
+- Backward-compatible endpoint: `POST /api/rag/chat/stream` (same JSON body as `/api/rag/prompt`)
+- Content type: `text/event-stream`
+- Authentication: same as other `/api/rag/**` endpoints (Basic Auth or Alfresco ticket)
+
+`GET` example:
+
+```bash
+curl -N -G http://localhost:9091/api/rag/chat/stream -u admin:admin \
+  --data-urlencode "question=What changed in Q4?" \
+  --data-urlencode "sessionId=demo-session-1" \
+  --data-urlencode "resetSession=false" \
+  --data-urlencode "topK=5" \
+  --data-urlencode "minScore=0.5"
+```
+
+Compatibility `POST` example:
+
+```bash
+curl -N -X POST http://localhost:9091/api/rag/chat/stream -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "What changed in Q4?",
+    "sessionId": "demo-session-1",
+    "topK": 5,
+    "minScore": 0.5
+  }'
+```
+
+Query params for `GET`:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `question` | String | *required* | Natural-language question |
+| `sessionId` | String | user-scoped default | Conversation session id for multi-turn context |
+| `resetSession` | boolean | false | Clear conversation history before this prompt |
+| `topK` | int | 5 | Number of chunks to retrieve for context |
+| `minScore` | double | 0.5 | Minimum similarity threshold |
+| `filter` | String | — | Additional HXQL filter |
+| `embeddingType` | String | model default | Embedding type to match |
+| `systemPrompt` | String | — | Override the default LLM system prompt |
+| `includeContext` | boolean | false | Include retrieved chunks in final metadata |
+
+SSE events:
+
+- `event: token` incremental token payload (`{"token":"..."}`)
+- `event: metadata` final payload with `RagPromptResponse` fields including `sources`, timing fields, `model`, and `tokenCount`
+- `event: done` terminal success event
+- `event: error` terminal failure event with error message
+
+Example stream:
+
+```text
+event: token
+data: {"token":"Revenue "}
+
+event: token
+data: {"token":"grew 12% in Q4."}
+
+event: metadata
+data: {"answer":"Revenue grew 12% in Q4.","question":"What changed in Q4?","model":"ai/gpt-oss","tokenCount":672,"searchTimeMs":245,"generationTimeMs":1830,"totalTimeMs":2075,"sourcesUsed":3,"sources":[{"documentId":"abc-123","nodeId":"e4f5a6b7-...","name":"Q4-Financial-Report.pdf","path":"/Company Home/Reports/Q4-Financial-Report.pdf","chunkText":"Revenue for Q4 increased by 12%...","score":0.87}]}
+
+event: done
+data: {"status":"ok"}
+```
+
+Error stream example:
+
+```text
+event: error
+data: {"message":"Failed to prepare RAG stream: ..."}
+```
 
 #### Semantic Search
 
