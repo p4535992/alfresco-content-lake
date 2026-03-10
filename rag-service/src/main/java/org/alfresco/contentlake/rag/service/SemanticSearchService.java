@@ -341,7 +341,7 @@ public class SemanticSearchService {
                 chunkMeta.paragraph(embedding.getSysembedLocation().getText().getParagraph());
             }
 
-            SourceDocument sourceDoc = documentCache.containsKey(docId)
+            SourceDocument sourceDoc = (docId != null && documentCache.containsKey(docId))
                     ? documentCache.get(docId)
                     : SourceDocument.builder().documentId(docId).build();
 
