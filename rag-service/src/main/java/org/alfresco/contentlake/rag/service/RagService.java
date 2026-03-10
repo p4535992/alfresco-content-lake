@@ -2,6 +2,7 @@ package org.alfresco.contentlake.rag.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.alfresco.contentlake.rag.conversation.ConversationMemoryService;
 import org.alfresco.contentlake.rag.conversation.ConversationTurn;
 import org.alfresco.contentlake.rag.config.RagProperties;
@@ -47,6 +48,9 @@ import java.util.regex.Pattern;
 public class RagService {
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile("\\S+");
+
+    @Value("${spring.ai.openai.chat.options.model:}")
+    private String configuredModel;
 
     private final SemanticSearchService semanticSearchService;
     private final ChatModel chatModel;
@@ -265,9 +269,11 @@ public class RagService {
             ChatResponse chatResponse = chatModel.call(buildPrompt(preparation));
 
             String answer = chatResponse.getResult().getOutput().getText();
-            String modelName = chatResponse.getMetadata() != null && chatResponse.getMetadata().getModel() != null
-                    ? chatResponse.getMetadata().getModel()
-                    : "unknown";
+            String modelName = configuredModel != null && !configuredModel.isBlank()
+                    ? configuredModel
+                    : (chatResponse.getMetadata() != null && chatResponse.getMetadata().getModel() != null
+                            ? chatResponse.getMetadata().getModel()
+                            : "unknown");
             Integer tokenCount = chatResponse.getMetadata() != null && chatResponse.getMetadata().getUsage() != null
                     ? chatResponse.getMetadata().getUsage().getTotalTokens()
                     : null;
@@ -403,7 +409,7 @@ public class RagService {
 
         if (chatResponse.getMetadata().getUsage() != null) {
             Integer totalTokens = chatResponse.getMetadata().getUsage().getTotalTokens();
-            if (totalTokens != null && totalTokens >= 0) {
+            if (totalTokens != null && totalTokens > 0) {
                 accumulator.tokenCount = totalTokens;
             }
         }
@@ -429,6 +435,9 @@ public class RagService {
     }
 
     private String resolveStreamModel(StreamAccumulator accumulator) {
+        if (configuredModel != null && !configuredModel.isBlank()) {
+            return configuredModel;
+        }
         if (accumulator.model != null && !accumulator.model.isBlank()) {
             return accumulator.model;
         }
@@ -438,7 +447,7 @@ public class RagService {
     private Integer resolveStreamTokenCount(StreamAccumulator accumulator,
                                             PromptPreparation preparation,
                                             String answer) {
-        if (accumulator.tokenCount != null && accumulator.tokenCount >= 0) {
+        if (accumulator.tokenCount != null && accumulator.tokenCount > 0) {
             return accumulator.tokenCount;
         }
         return estimateTotalTokenCount(preparation.prompt().systemPrompt(), preparation.prompt().userPrompt(), answer);
