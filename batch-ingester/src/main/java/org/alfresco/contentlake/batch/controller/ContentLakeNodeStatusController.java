@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -22,8 +23,11 @@ public class ContentLakeNodeStatusController {
     private final ContentLakeNodeStatusService contentLakeNodeStatusService;
 
     @GetMapping("/{nodeId}/status")
-    public ContentLakeNodeStatus getNodeStatus(@PathVariable String nodeId) {
-        return contentLakeNodeStatusService.getNodeStatus(nodeId);
+    public ContentLakeNodeStatus getNodeStatus(
+            @PathVariable String nodeId,
+            @RequestParam(name = "includeFolderAggregate", defaultValue = "false") boolean includeFolderAggregate
+    ) {
+        return contentLakeNodeStatusService.getNodeStatus(nodeId, includeFolderAggregate);
     }
 
     @PostMapping("/status")
@@ -31,6 +35,7 @@ public class ContentLakeNodeStatusController {
         List<String> nodeIds = request != null && request.nodeIds() != null
                 ? request.nodeIds()
                 : List.of();
-        return contentLakeNodeStatusService.getNodeStatuses(nodeIds);
+        boolean includeFolderAggregate = request != null && Boolean.TRUE.equals(request.includeFolderAggregate());
+        return contentLakeNodeStatusService.getNodeStatuses(nodeIds, includeFolderAggregate);
     }
 }

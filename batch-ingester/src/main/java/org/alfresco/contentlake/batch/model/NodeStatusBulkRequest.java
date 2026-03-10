@@ -2,4 +2,4 @@ package org.alfresco.contentlake.batch.model;
 
 import java.util.List;
 
-public record NodeStatusBulkRequest(List<String> nodeIds) {}
+public record NodeStatusBulkRequest(List<String> nodeIds, Boolean includeFolderAggregate) {}

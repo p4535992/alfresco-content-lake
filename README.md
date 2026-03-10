@@ -297,6 +297,16 @@ curl -X POST http://localhost:9090/api/content-lake/nodes/status \
   -u admin:admin \
   -H "Content-Type: application/json" \
   -d '{"nodeIds":["node-id-1","node-id-2"]}'
+
+# Optional: include aggregated subtree status for folders
+curl -X POST http://localhost:9090/api/content-lake/nodes/status \
+  -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{"nodeIds":["folder-id"],"includeFolderAggregate":true}'
+
+# Optional: same aggregation for single-folder lookup
+curl "http://localhost:9090/api/content-lake/nodes/{folderId}/status?includeFolderAggregate=true" \
+  -u admin:admin
 ```
 
 ### RAG Service (port 9091)
