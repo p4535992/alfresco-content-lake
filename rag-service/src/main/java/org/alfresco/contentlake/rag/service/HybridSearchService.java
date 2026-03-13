@@ -469,7 +469,9 @@ public class HybridSearchService {
         }
 
         if (metadata.getPathPrefix() != null && !metadata.getPathPrefix().isBlank()) {
-            clauses.add(ALF_PATH_PROP + " LIKE '" + escapeHxql(metadata.getPathPrefix().trim()) + "%'");
+            String escapedPrefix = escapeHxql(metadata.getPathPrefix().trim());
+            clauses.add("(" + ALF_PATH_PROP + " >= '" + escapedPrefix + "' AND "
+                    + ALF_PATH_PROP + " < '" + escapedPrefix + "\uFFFF')");
         }
 
         if (metadata.getModifiedAfter() != null && !metadata.getModifiedAfter().isBlank()) {

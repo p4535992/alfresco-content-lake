@@ -306,7 +306,7 @@ class HybridSearchServiceTest {
             String filter = service.buildMetadataFilter(metadata);
 
             assertThat(filter).contains("cin_ingestProperties.alfresco_mimeType = 'application/pdf'");
-            assertThat(filter).contains("cin_ingestProperties.alfresco_path LIKE '/Company Home/Sites/Finance%'");
+            assertThat(filter).contains("(cin_ingestProperties.alfresco_path >= '/Company Home/Sites/Finance' AND cin_ingestProperties.alfresco_path < '/Company Home/Sites/Finance\uFFFF')");
             assertThat(filter).contains("cin_ingestProperties.alfresco_modifiedAt >= '2026-01-01T00:00:00Z'");
             assertThat(filter).contains("cin_ingestProperties.alfresco_modifiedAt <= '2026-12-31T23:59:59Z'");
             assertThat(filter).contains("cin_ingestProperties.cm:title = 'Budget 2026'");
