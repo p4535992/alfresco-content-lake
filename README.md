@@ -83,6 +83,7 @@ Leverages **hxpr** as a Content Lake to enable high-quality AI search while:
 | `batch-ingester` | 9090 | Folder discovery, batch scheduling, metadata enqueueing, and `/api/sync/*` controllers |
 | `live-ingester` | 9092 | Alfresco Event2 listener over ActiveMQ using Alfresco Java SDK handlers and filters |
 | `rag-service` | 9091 | Semantic search and RAG question answering |
+| `alfresco-content-syncer` | 9093 | Quarkus app with REST API and minimal web UI for syncing a local folder tree into an Alfresco folder and generating a final report |
 
 ## Quick Start
 
@@ -124,6 +125,12 @@ java -jar live-ingester/target/live-ingester-1.0.0-SNAPSHOT.jar
 
 # Run RAG service
 java -jar rag-service/target/rag-service-1.0.0-SNAPSHOT.jar
+
+# Run Alfresco Content Syncer UI/API
+java -jar alfresco-content-syncer/target/alfresco-content-syncer-1.0.0-SNAPSHOT-runner.jar
+
+# Then open
+#   http://localhost:9093
 
 # Or with Docker Compose (both services)
 docker-compose up
@@ -307,6 +314,60 @@ curl -X POST http://localhost:9090/api/content-lake/nodes/status \
 # Optional: same aggregation for single-folder lookup
 curl "http://localhost:9090/api/content-lake/nodes/{folderId}/status?includeFolderAggregate=true" \
   -u admin:admin
+```
+
+### Alfresco Content Syncer
+
+The `alfresco-content-syncer` module is separate from the Content Lake ingestion flow. It is a Quarkus application that exposes:
+
+- a minimal web UI on `http://localhost:9093`
+- a REST API to start and monitor sync jobs
+- a local filesystem to Alfresco synchronization engine
+- a final JSON report for each job
+
+Default behavior:
+
+- creates missing folders
+- uploads missing files
+- updates existing files when `size` differs or local `lastModified` is newer than Alfresco `modifiedAt`
+- returns a final JSON report via REST and UI
+- does not delete remote nodes unless explicitly enabled
+
+Run it:
+
+```bash
+java -jar alfresco-content-syncer/target/alfresco-content-syncer-1.0.0-SNAPSHOT-runner.jar
+```
+
+UI:
+
+```bash
+# open in browser
+http://localhost:9093
+```
+
+API example:
+
+```bash
+curl -X POST http://localhost:9093/api/sync/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "localRoot": "/data/contracts",
+    "remoteRootNodeId": "TARGET_FOLDER_NODE_ID",
+    "alfrescoBaseUrl": "http://localhost:8080",
+    "username": "admin",
+    "password": "admin",
+    "dryRun": true,
+    "deleteRemoteMissing": false,
+    "reportOutput": "/tmp/sync-report.json"
+  }'
+```
+
+Job status:
+
+```bash
+curl http://localhost:9093/api/sync/jobs
+curl http://localhost:9093/api/sync/jobs/{jobId}
 ```
 
 ### RAG Service (port 9091)

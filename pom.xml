@@ -23,6 +23,7 @@
         <module>batch-ingester</module>
         <module>live-ingester</module>
         <module>rag-service</module>
+        <module>alfresco-content-syncer</module>
     </modules>
 
     <properties>
