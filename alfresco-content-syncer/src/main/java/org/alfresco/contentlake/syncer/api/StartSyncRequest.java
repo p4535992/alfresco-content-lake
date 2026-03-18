@@ -3,7 +3,7 @@ package org.alfresco.contentlake.syncer.api;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class StartSyncRequest {
+public class StartSyncRequest implements AlfrescoConnectionRequest {
 
     public String localRoot;
     public String remoteRootNodeId;
@@ -29,6 +29,10 @@ public class StartSyncRequest {
         if (isBlank(remoteRootNodeId)) {
             throw new IllegalArgumentException("remoteRootNodeId is required");
         }
+        validateConnection();
+    }
+
+    public void validateConnection() {
         if (isBlank(alfrescoBaseUrl)) {
             throw new IllegalArgumentException("alfrescoBaseUrl is required");
         }
@@ -47,10 +51,26 @@ public class StartSyncRequest {
         return isBlank(reportOutput) ? null : Path.of(reportOutput).toAbsolutePath().normalize();
     }
 
+    @Override
     public String sanitizedBaseUrl() {
         return alfrescoBaseUrl.endsWith("/")
                 ? alfrescoBaseUrl.substring(0, alfrescoBaseUrl.length() - 1)
                 : alfrescoBaseUrl;
+    }
+
+    @Override
+    public String username() {
+        return username;
+    }
+
+    @Override
+    public String password() {
+        return password;
+    }
+
+    @Override
+    public String ticket() {
+        return ticket;
     }
 
     private boolean isBlank(String value) {

@@ -322,15 +322,20 @@ The `alfresco-content-syncer` module is separate from the Content Lake ingestion
 
 - a minimal web UI on `http://localhost:9093`
 - a REST API to start and monitor sync jobs
+- a REST API to browse Alfresco folders before launching the sync
 - a local filesystem to Alfresco synchronization engine
-- a final JSON report for each job
+- persisted job/report history under `.syncer-data`
+- optional token protection for all `/api/*` endpoints
+- CSV report generation with per-item rows for human review
 
 Default behavior:
 
 - creates missing folders
 - uploads missing files
 - updates existing files when `size` differs or local `lastModified` is newer than Alfresco `modifiedAt`
+- uses a persisted SHA-256 manifest to avoid false updates when only local timestamps drift
 - returns a final JSON report via REST and UI
+- writes CSV when `reportOutput` ends with `.csv`; otherwise writes JSON plus a companion `.csv`
 - does not delete remote nodes unless explicitly enabled
 
 Run it:
@@ -369,6 +374,28 @@ Job status:
 curl http://localhost:9093/api/sync/jobs
 curl http://localhost:9093/api/sync/jobs/{jobId}
 ```
+
+Browse remote folders:
+
+```bash
+curl -X POST http://localhost:9093/api/alfresco/browse \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nodeId": "TARGET_FOLDER_NODE_ID",
+    "alfrescoBaseUrl": "http://localhost:8080",
+    "username": "admin",
+    "password": "admin"
+  }'
+```
+
+Optional API protection:
+
+```bash
+# application.properties
+syncer.ui.auth-token=change-me
+```
+
+When configured, the UI sends the token in `X-Syncer-Token` and direct API calls must do the same.
 
 ### RAG Service (port 9091)
 

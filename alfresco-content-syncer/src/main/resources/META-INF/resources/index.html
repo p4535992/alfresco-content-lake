@@ -16,6 +16,7 @@
       --ok: #2b7a4b;
       --warn: #a55b17;
       --err: #a12a2a;
+      --soft: #f7f0e2;
     }
     * { box-sizing: border-box; }
     body {
@@ -24,17 +25,13 @@
       color: var(--ink);
       background: radial-gradient(circle at top left, #fff7ea, var(--bg) 48%), linear-gradient(135deg, #efe6d5, #f6f1e8);
     }
-    .shell {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 32px 20px 56px;
-    }
-    .hero {
-      display: grid;
-      grid-template-columns: 1.3fr 0.7fr;
-      gap: 20px;
-      margin-bottom: 24px;
-    }
+    .shell { max-width: 1220px; margin: 0 auto; padding: 32px 20px 56px; }
+    .hero, .grid, .split, .row.two, .triple { display: grid; gap: 20px; }
+    .hero { grid-template-columns: 1.2fr 0.8fr; margin-bottom: 24px; }
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .split { grid-template-columns: 0.9fr 1.1fr; margin-top: 20px; }
+    .triple { grid-template-columns: 0.8fr 1.2fr 1fr; margin-top: 20px; }
+    .row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .card {
       background: color-mix(in srgb, var(--panel) 92%, white 8%);
       border: 1px solid var(--line);
@@ -43,129 +40,52 @@
       box-shadow: 0 16px 40px rgba(83, 59, 31, 0.08);
     }
     h1, h2, h3 { margin: 0 0 12px; }
-    h1 {
-      font-size: clamp(2rem, 4vw, 3.7rem);
-      line-height: 0.95;
-      letter-spacing: -0.06em;
-      max-width: 10ch;
-    }
-    p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.5;
-    }
+    h1 { font-size: clamp(2rem, 4vw, 3.7rem); line-height: 0.95; letter-spacing: -0.06em; max-width: 10ch; }
+    p { margin: 0; color: var(--muted); line-height: 1.5; }
     .status-pill {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      font-size: 0.85rem;
-      margin-bottom: 14px;
-      background: #fff7ea;
+      display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line);
+      font-size: 0.85rem; margin-bottom: 14px; background: #fff7ea;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 20px;
+    label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 7px; }
+    input {
+      width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+      color: var(--ink); padding: 12px 14px; font: inherit;
     }
-    label {
-      display: block;
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin-bottom: 7px;
-    }
-    input, textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: #fff;
-      color: var(--ink);
-      padding: 12px 14px;
-      font: inherit;
-    }
-    textarea { min-height: 160px; resize: vertical; }
-    .row { display: grid; gap: 16px; }
-    .row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .checks {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-top: 4px;
-    }
-    .checks label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0;
-      font-weight: 600;
-    }
-    .checks input { width: auto; }
     button {
-      border: 0;
-      border-radius: 999px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-      color: white;
-      padding: 12px 18px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
+      border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: white; padding: 12px 18px; font: inherit; font-weight: 700; cursor: pointer;
       box-shadow: 0 12px 24px rgba(141, 60, 22, 0.2);
     }
+    button.ghost {
+      background: white; color: var(--ink); border: 1px solid var(--line); box-shadow: none;
+    }
     button:disabled { opacity: 0.65; cursor: wait; }
-    .split {
-      display: grid;
-      grid-template-columns: 0.9fr 1.1fr;
-      gap: 20px;
-      margin-top: 20px;
+    .checks { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 4px; }
+    .checks label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; }
+    .checks input { width: auto; }
+    .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .meta div, .mini-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px;
     }
-    .meta {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+    .meta strong { display: block; font-size: 1.25rem; margin-top: 6px; }
+    .jobs, .browser-list { display: grid; gap: 12px; max-height: 420px; overflow: auto; }
+    .job, .browser-item {
+      padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: #fff; cursor: pointer;
     }
-    .meta div {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px;
-    }
-    .meta strong {
-      display: block;
-      font-size: 1.25rem;
-      margin-top: 6px;
-    }
-    .jobs {
-      display: grid;
-      gap: 12px;
-      max-height: 420px;
-      overflow: auto;
-    }
-    .job {
-      padding: 14px;
-      border-radius: 14px;
-      border: 1px solid var(--line);
-      background: #fff;
-      cursor: pointer;
-    }
-    .job small { color: var(--muted); display: block; margin-top: 6px; }
-    .job.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .job small, .browser-item small { color: var(--muted); display: block; margin-top: 6px; }
+    .job.active, .browser-item.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .browser-item.file { opacity: 0.8; cursor: default; background: var(--soft); }
     .report {
-      white-space: pre-wrap;
-      font-family: Consolas, monospace;
-      font-size: 0.9rem;
-      background: #1f262b;
-      color: #eef5f5;
-      border-radius: 16px;
-      padding: 16px;
-      min-height: 360px;
-      overflow: auto;
+      white-space: pre-wrap; font-family: Consolas, monospace; font-size: 0.9rem; background: #1f262b;
+      color: #eef5f5; border-radius: 16px; padding: 16px; min-height: 360px; overflow: auto;
     }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
     .message { margin-top: 12px; font-weight: 700; }
     .message.ok { color: var(--ok); }
     .message.warn { color: var(--warn); }
     .message.err { color: var(--err); }
-    @media (max-width: 900px) {
-      .hero, .grid, .split, .row.two { grid-template-columns: 1fr; }
+    @media (max-width: 980px) {
+      .hero, .grid, .split, .row.two, .triple { grid-template-columns: 1fr; }
       h1 { max-width: none; }
     }
   </style>
@@ -176,17 +96,61 @@
     <div class="card">
       <div class="status-pill">Quarkus UI • local binaries to Alfresco</div>
       <h1>Alfresco Content Syncer</h1>
-      <p>Minimal operational UI to launch local folder synchronization jobs, track status, and inspect the final report. The sync runs on the same host where this application is started.</p>
+      <p>Operational UI to browse Alfresco folders, launch local folder synchronization jobs, track status, and inspect final reports. Sync runs on the same host where this application is started.</p>
     </div>
     <div class="card">
       <h3>Operational Notes</h3>
-      <p>Use <strong>dry run</strong> first. Remote delete is disabled by default because it is destructive. Existing files are updated only when size differs or the local timestamp is newer than Alfresco.</p>
+      <p>Use <strong>dry run</strong> first. Remote delete is disabled by default because it is destructive. Existing files are updated using size, timestamps, and a persisted SHA-256 manifest to avoid false updates when only local timestamps drift.</p>
     </div>
   </section>
 
   <section class="card">
-    <h2>Start Job</h2>
+    <h2>Connection</h2>
     <div class="grid">
+      <div>
+        <label for="authToken">Optional UI/API token</label>
+        <input id="authToken" placeholder="Set if syncer.ui.auth-token is configured">
+      </div>
+      <div>
+        <label for="alfrescoBaseUrl">Alfresco base URL</label>
+        <input id="alfrescoBaseUrl" placeholder="http://localhost:8080">
+      </div>
+      <div>
+        <label for="username">Username</label>
+        <input id="username" placeholder="admin">
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="admin">
+      </div>
+      <div>
+        <label for="ticket">Ticket</label>
+        <input id="ticket" placeholder="TICKET_xxx">
+      </div>
+      <div class="mini-card">
+        <strong>Tip</strong>
+        <p>Use username/password or a ticket. If `syncer.ui.auth-token` is configured, the same token protects all `/api/*` endpoints.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="triple">
+    <div class="card">
+      <h2>Browse Alfresco</h2>
+      <label for="browseNodeId">Current folder node id</label>
+      <input id="browseNodeId" placeholder="TARGET_FOLDER_NODE_ID">
+      <div class="toolbar" style="margin-top:12px;">
+        <button id="browseButton" class="ghost">Browse folder</button>
+        <button id="useCurrentButton" class="ghost">Use as sync target</button>
+      </div>
+      <div id="browserCurrent" class="mini-card">No folder loaded.</div>
+    </div>
+    <div class="card">
+      <h2>Folders</h2>
+      <div id="browserList" class="browser-list"></div>
+    </div>
+    <div class="card">
+      <h2>Start Job</h2>
       <div class="row">
         <div>
           <label for="localRoot">Local root</label>
@@ -197,28 +161,8 @@
           <input id="remoteRootNodeId" placeholder="TARGET_FOLDER_NODE_ID">
         </div>
         <div>
-          <label for="alfrescoBaseUrl">Alfresco base URL</label>
-          <input id="alfrescoBaseUrl" placeholder="http://localhost:8080">
-        </div>
-        <div>
           <label for="reportOutput">Optional report output path</label>
           <input id="reportOutput" placeholder="D:\\reports\\sync-report.json">
-        </div>
-      </div>
-      <div class="row">
-        <div class="row two">
-          <div>
-            <label for="username">Username</label>
-            <input id="username" placeholder="admin">
-          </div>
-          <div>
-            <label for="password">Password</label>
-            <input id="password" type="password" placeholder="admin">
-          </div>
-        </div>
-        <div>
-          <label for="ticket">Ticket</label>
-          <input id="ticket" placeholder="TICKET_xxx">
         </div>
         <div class="checks">
           <label><input id="dryRun" type="checkbox" checked>Dry run</label>
@@ -250,21 +194,48 @@
   const metaEl = document.getElementById('meta');
   const messageEl = document.getElementById('message');
   const startButton = document.getElementById('startButton');
+  const browserListEl = document.getElementById('browserList');
+  const browserCurrentEl = document.getElementById('browserCurrent');
+  const authTokenEl = document.getElementById('authToken');
   let selectedJobId = null;
   let pollHandle = null;
+  let browserState = null;
 
-  function payload() {
+  authTokenEl.value = localStorage.getItem('syncer.authToken') || '';
+  authTokenEl.addEventListener('change', () => localStorage.setItem('syncer.authToken', authTokenEl.value));
+
+  function authHeaders() {
+    const token = authTokenEl.value.trim();
+    return token ? { 'X-Syncer-Token': token } : {};
+  }
+
+  function connectionPayload() {
     return {
-      localRoot: document.getElementById('localRoot').value,
-      remoteRootNodeId: document.getElementById('remoteRootNodeId').value,
       alfrescoBaseUrl: document.getElementById('alfrescoBaseUrl').value,
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
-      ticket: document.getElementById('ticket').value,
+      ticket: document.getElementById('ticket').value
+    };
+  }
+
+  function jobPayload() {
+    return {
+      ...connectionPayload(),
+      localRoot: document.getElementById('localRoot').value,
+      remoteRootNodeId: document.getElementById('remoteRootNodeId').value,
       dryRun: document.getElementById('dryRun').checked,
       deleteRemoteMissing: document.getElementById('deleteRemoteMissing').checked,
       reportOutput: document.getElementById('reportOutput').value
     };
+  }
+
+  async function apiFetch(url, options = {}) {
+    const headers = { ...(options.headers || {}), ...authHeaders() };
+    const response = await fetch(url, { ...options, headers });
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    return response;
   }
 
   function setMessage(text, kind) {
@@ -294,41 +265,66 @@
       return;
     }
 
+    const report = job.report || {};
     metaEl.innerHTML = `
       <div><span>Status</span><strong>${job.status}</strong></div>
       <div><span>Dry run</span><strong>${job.dryRun}</strong></div>
       <div><span>Delete missing</span><strong>${job.deleteRemoteMissing}</strong></div>
       <div><span>Remote root</span><strong>${job.remoteRootNodeId}</strong></div>
+      <div><span>Files uploaded</span><strong>${report.filesUploaded ?? '-'}</strong></div>
+      <div><span>Files updated</span><strong>${report.filesUpdated ?? '-'}</strong></div>
+      <div><span>Files skipped</span><strong>${report.filesSkipped ?? '-'}</strong></div>
+      <div><span>Failures</span><strong>${report.failedCount ?? (job.errorMessage ? 1 : '-')}</strong></div>
     `;
 
     reportEl.textContent = JSON.stringify(job.report || { errorMessage: job.errorMessage || 'Job running or queued.' }, null, 2);
   }
 
+  function renderBrowser(state) {
+    browserState = state;
+    browserCurrentEl.innerHTML = state
+      ? `<strong>${state.currentNode.name || '(no name)'}</strong><br><small>${state.currentNode.id}</small>`
+      : 'No folder loaded.';
+
+    browserListEl.innerHTML = '';
+    if (!state) {
+      return;
+    }
+
+    const children = state.children || [];
+    children.forEach(child => {
+      const div = document.createElement('div');
+      div.className = `browser-item ${child.folder ? 'folder' : 'file'}`;
+      div.innerHTML = `<strong>${child.name}</strong><small>${child.id}</small>`;
+      if (child.folder) {
+        div.onclick = async () => {
+          document.getElementById('browseNodeId').value = child.id;
+          await browse(child.id);
+        };
+      }
+      browserListEl.appendChild(div);
+    });
+  }
+
   async function loadJobs() {
-    const response = await fetch('/api/sync/jobs');
+    const response = await apiFetch('/api/sync/jobs');
     const jobs = await response.json();
     renderJobs(jobs);
     if (!selectedJobId && jobs.length) {
       selectedJobId = jobs[0].jobId;
-      loadJob(selectedJobId);
+      await loadJob(selectedJobId);
     }
   }
 
   async function loadJob(jobId) {
-    const response = await fetch(`/api/sync/jobs/${jobId}`);
-    if (!response.ok) {
-      return;
-    }
+    const response = await apiFetch(`/api/sync/jobs/${jobId}`);
     const job = await response.json();
     renderJob(job);
 
     if (job.status === 'RUNNING' || job.status === 'QUEUED') {
       if (!pollHandle) {
         pollHandle = setInterval(async () => {
-          const inner = await fetch(`/api/sync/jobs/${selectedJobId}`);
-          if (!inner.ok) {
-            return;
-          }
+          const inner = await apiFetch(`/api/sync/jobs/${selectedJobId}`);
           const updated = await inner.json();
           renderJob(updated);
           await loadJobs();
@@ -341,21 +337,45 @@
     }
   }
 
+  async function browse(nodeId) {
+    const response = await apiFetch('/api/alfresco/browse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...connectionPayload(), nodeId })
+    });
+    const data = await response.json();
+    renderBrowser(data);
+  }
+
+  document.getElementById('browseButton').addEventListener('click', async () => {
+    try {
+      setMessage('Browsing Alfresco folder...', 'warn');
+      await browse(document.getElementById('browseNodeId').value);
+      setMessage('Folder loaded.', 'ok');
+    } catch (error) {
+      setMessage(error.message || 'Browse failed', 'err');
+    }
+  });
+
+  document.getElementById('useCurrentButton').addEventListener('click', () => {
+    const current = browserState?.currentNode;
+    if (!current) {
+      setMessage('Browse a folder first.', 'warn');
+      return;
+    }
+    document.getElementById('remoteRootNodeId').value = current.id;
+    setMessage(`Selected ${current.id} as sync target.`, 'ok');
+  });
+
   startButton.addEventListener('click', async () => {
     startButton.disabled = true;
     setMessage('Submitting job...', 'warn');
     try {
-      const response = await fetch('/api/sync/jobs', {
+      const response = await apiFetch('/api/sync/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload())
+        body: JSON.stringify(jobPayload())
       });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text);
-      }
-
       const job = await response.json();
       selectedJobId = job.jobId;
       setMessage(`Job ${job.jobId} accepted.`, 'ok');

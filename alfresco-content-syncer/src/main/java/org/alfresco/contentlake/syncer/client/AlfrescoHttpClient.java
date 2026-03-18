@@ -4,8 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.api.StartSyncRequest;
+import org.alfresco.contentlake.syncer.api.AlfrescoConnectionRequest;
 import org.alfresco.contentlake.syncer.model.RemoteNode;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,109 +30,128 @@ public class AlfrescoHttpClient {
     @Inject
     ObjectMapper objectMapper;
 
+    @ConfigProperty(name = "syncer.alfresco.max-attempts", defaultValue = "3")
+    int maxAttempts;
+
+    @ConfigProperty(name = "syncer.alfresco.retry-delay-ms", defaultValue = "500")
+    long retryDelayMs;
+
     private final HttpClient httpClient = HttpClient.newBuilder().build();
 
-    public RemoteNode getNode(StartSyncRequest request, String nodeId) {
-        HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(nodeId)))
-                .GET()
-                .build();
-        return parseEntry(send(httpRequest, 200));
+    public RemoteNode getNode(AlfrescoConnectionRequest request, String nodeId) {
+        return withRetry(() -> {
+            HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(nodeId)))
+                    .GET()
+                    .build();
+            return parseEntry(send(httpRequest, 200));
+        });
     }
 
-    public List<RemoteNode> listChildren(StartSyncRequest request, String nodeId) {
-        List<RemoteNode> children = new ArrayList<>();
-        int skipCount = 0;
-        while (true) {
-            URI uri = nodeUri(request,
-                    "/nodes/" + encode(nodeId) + "/children?skipCount=" + skipCount + "&maxItems=" + PAGE_SIZE + "&include=properties");
-            HttpRequest httpRequest = requestBuilder(request, uri).GET().build();
-            List<RemoteNode> page = parseEntries(send(httpRequest, 200));
-            children.addAll(page);
-            if (page.size() < PAGE_SIZE) {
-                return children;
+    public List<RemoteNode> listChildren(AlfrescoConnectionRequest request, String nodeId) {
+        return withRetry(() -> {
+            List<RemoteNode> children = new ArrayList<>();
+            int skipCount = 0;
+            while (true) {
+                URI uri = nodeUri(request,
+                        "/nodes/" + encode(nodeId) + "/children?skipCount=" + skipCount + "&maxItems=" + PAGE_SIZE + "&include=properties");
+                HttpRequest httpRequest = requestBuilder(request, uri).GET().build();
+                List<RemoteNode> page = parseEntries(send(httpRequest, 200));
+                children.addAll(page);
+                if (page.size() < PAGE_SIZE) {
+                    return children;
+                }
+                skipCount += PAGE_SIZE;
             }
-            skipCount += PAGE_SIZE;
-        }
+        });
     }
 
-    public RemoteNode createFolder(StartSyncRequest request, String parentNodeId, String folderName) {
-        String payload = "{" +
-                "\"name\":\"" + escapeJson(folderName) + "\"," +
-                "\"nodeType\":\"cm:folder\"" +
-                "}";
-
-        HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(parentNodeId) + "/children"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
-                .build();
-
-        return parseEntry(send(httpRequest, 201));
-    }
-
-    public RemoteNode uploadFile(StartSyncRequest request, String parentNodeId, Path file) {
-        try {
-            String boundary = "----alfresco-syncer-" + UUID.randomUUID();
-            String fileName = file.getFileName().toString();
-            String mimeType = probeMimeType(file);
-
-            HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.concat(
-                    stringPart(boundary, "filedata", fileName, mimeType),
-                    HttpRequest.BodyPublishers.ofFile(file),
-                    stringPublisher("\r\n"),
-                    textPart(boundary, "name", fileName),
-                    textPart(boundary, "nodeType", "cm:content"),
-                    textPart(boundary, "autoRename", "false"),
-                    stringPublisher("--" + boundary + "--\r\n")
-            );
+    public RemoteNode createFolder(AlfrescoConnectionRequest request, String parentNodeId, String folderName) {
+        return withRetry(() -> {
+            String payload = "{" +
+                    "\"name\":\"" + escapeJson(folderName) + "\"," +
+                    "\"nodeType\":\"cm:folder\"" +
+                    "}";
 
             HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(parentNodeId) + "/children"))
-                    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                    .POST(bodyPublisher)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
                     .build();
 
             return parseEntry(send(httpRequest, 201));
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to read file for upload: " + file, e);
-        }
+        });
     }
 
-    public RemoteNode updateFileContent(StartSyncRequest request, String nodeId, Path file) {
-        try {
-            HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(nodeId) + "/content?majorVersion=false"))
-                    .header("Content-Type", probeMimeType(file))
-                    .header("Content-Disposition", contentDisposition(file.getFileName().toString()))
-                    .PUT(HttpRequest.BodyPublishers.ofFile(file))
+    public RemoteNode uploadFile(AlfrescoConnectionRequest request, String parentNodeId, Path file) {
+        return withRetry(() -> {
+            try {
+                String boundary = "----alfresco-syncer-" + UUID.randomUUID();
+                String fileName = file.getFileName().toString();
+                String mimeType = probeMimeType(file);
+
+                HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.concat(
+                        stringPart(boundary, "filedata", fileName, mimeType),
+                        HttpRequest.BodyPublishers.ofFile(file),
+                        stringPublisher("\r\n"),
+                        textPart(boundary, "name", fileName),
+                        textPart(boundary, "nodeType", "cm:content"),
+                        textPart(boundary, "autoRename", "false"),
+                        stringPublisher("--" + boundary + "--\r\n")
+                );
+
+                HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(parentNodeId) + "/children"))
+                        .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                        .POST(bodyPublisher)
+                        .build();
+
+                return parseEntry(send(httpRequest, 201));
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to read file for upload: " + file, e);
+            }
+        });
+    }
+
+    public RemoteNode updateFileContent(AlfrescoConnectionRequest request, String nodeId, Path file) {
+        return withRetry(() -> {
+            try {
+                HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(nodeId) + "/content?majorVersion=false"))
+                        .header("Content-Type", probeMimeType(file))
+                        .header("Content-Disposition", contentDisposition(file.getFileName().toString()))
+                        .PUT(HttpRequest.BodyPublishers.ofFile(file))
+                        .build();
+                return parseEntry(send(httpRequest, 200));
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to read file for content update: " + file, e);
+            }
+        });
+    }
+
+    public void deleteNode(AlfrescoConnectionRequest request, String nodeId) {
+        withRetry(() -> {
+            HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(nodeId)))
+                    .DELETE()
                     .build();
-            return parseEntry(send(httpRequest, 200));
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to read file for content update: " + file, e);
-        }
+            send(httpRequest, 204);
+            return null;
+        });
     }
 
-    public void deleteNode(StartSyncRequest request, String nodeId) {
-        HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(nodeId)))
-                .DELETE()
-                .build();
-        send(httpRequest, 204);
-    }
-
-    private HttpRequest.Builder requestBuilder(StartSyncRequest request, URI uri) {
+    private HttpRequest.Builder requestBuilder(AlfrescoConnectionRequest request, URI uri) {
         HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
                 .header("Accept", "application/json");
 
-        if (request.ticket != null && !request.ticket.isBlank()) {
+        if (request.ticket() != null && !request.ticket().isBlank()) {
             return builder;
         }
 
-        String credentials = request.username + ":" + request.password;
+        String credentials = request.username() + ":" + request.password();
         String basic = java.util.Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
         return builder.header("Authorization", "Basic " + basic);
     }
 
-    private URI nodeUri(StartSyncRequest request, String pathAndQuery) {
+    private URI nodeUri(AlfrescoConnectionRequest request, String pathAndQuery) {
         String separator = pathAndQuery.contains("?") ? "&" : "?";
-        String suffix = request.ticket != null && !request.ticket.isBlank()
-                ? pathAndQuery + separator + "alf_ticket=" + encode(request.ticket)
+        String suffix = request.ticket() != null && !request.ticket().isBlank()
+                ? pathAndQuery + separator + "alf_ticket=" + encode(request.ticket())
                 : pathAndQuery;
         return URI.create(request.sanitizedBaseUrl() + "/alfresco/api/-default-/public/alfresco/versions/1" + suffix);
     }
@@ -233,5 +253,44 @@ public class AlfrescoHttpClient {
 
     private String escapeQuotes(String value) {
         return value.replace("\"", "");
+    }
+
+    private <T> T withRetry(IoSupplier<T> supplier) {
+        RuntimeException last = null;
+        for (int attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
+            try {
+                return supplier.get();
+            } catch (RuntimeException e) {
+                last = e;
+                if (attempt >= maxAttempts || !isRetryable(e)) {
+                    throw e;
+                }
+                sleepBeforeRetry();
+            }
+        }
+        throw last;
+    }
+
+    private boolean isRetryable(RuntimeException e) {
+        Throwable cause = e.getCause();
+        if (cause instanceof IOException) {
+            return true;
+        }
+        String message = e.getMessage();
+        return message != null && message.contains("status=5");
+    }
+
+    private void sleepBeforeRetry() {
+        try {
+            Thread.sleep(Math.max(0L, retryDelayMs));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Retry interrupted", e);
+        }
+    }
+
+    @FunctionalInterface
+    private interface IoSupplier<T> {
+        T get();
     }
 }
