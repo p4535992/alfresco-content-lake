@@ -3,9 +3,11 @@ package org.alfresco.contentlake.syncer.api;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
@@ -16,6 +18,27 @@ import java.util.concurrent.atomic.AtomicReference;
 @Path("/api/system")
 @Produces(MediaType.APPLICATION_JSON)
 public class DesktopResource {
+
+    @ConfigProperty(name = "syncer.ui.startup-host", defaultValue = "127.0.0.1")
+    String startupHost;
+
+    @ConfigProperty(name = "quarkus.http.port")
+    int httpPort;
+
+    @ConfigProperty(name = "syncer.jobrunr.dashboard-host", defaultValue = "127.0.0.1")
+    String dashboardHost;
+
+    @ConfigProperty(name = "syncer.jobrunr.dashboard-port", defaultValue = "8000")
+    int dashboardPort;
+
+    @GET
+    @Path("/runtime")
+    public RuntimeInfoResponse runtimeInfo() {
+        return new RuntimeInfoResponse(
+                "http://" + startupHost + ":" + httpPort + "/",
+                "http://" + dashboardHost + ":" + dashboardPort + "/"
+        );
+    }
 
     @POST
     @Path("/local-folder/select")

@@ -17,6 +17,7 @@
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.version>3.31.3</quarkus.platform.version>
+        <jobrunr.version>8.5.0</jobrunr.version>
         <skipITs>true</skipITs>
         <windows.app.version>1.0.0</windows.app.version>
     </properties>
@@ -49,6 +50,19 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-agroal</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-h2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jobrunr</groupId>
+            <artifactId>quarkus-jobrunr</artifactId>
+            <version>${jobrunr.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -115,6 +129,8 @@
                                             <arg value="${windows.app.version}"/>
                                             <arg value="--vendor"/>
                                             <arg value="Alfresco"/>
+                                            <arg value="--java-options"/>
+                                            <arg value="-Dsyncer.runtime.root=$ROOTDIR"/>
                                             <arg value="--win-console"/>
                                         </exec>
                                     </target>

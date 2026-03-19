@@ -10,6 +10,7 @@ import org.alfresco.contentlake.syncer.model.SyncReport;
 import org.alfresco.contentlake.syncer.model.SyncState;
 import org.alfresco.contentlake.syncer.model.SyncStateEntry;
 import org.alfresco.contentlake.syncer.report.CsvReportWriter;
+import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,6 +33,8 @@ import java.util.function.Consumer;
 @ApplicationScoped
 public class LocalFolderSyncService {
 
+    private static final Logger LOG = Logger.getLogger(LocalFolderSyncService.class);
+
     @Inject
     AlfrescoHttpClient alfrescoHttpClient;
 
@@ -51,6 +54,13 @@ public class LocalFolderSyncService {
 
     public SyncReport sync(StartSyncRequest request, Consumer<SyncReport> progressListener) throws IOException {
         request.validate();
+        LOG.infof(
+                "Starting folder sync localRoot=%s remoteRoot=%s dryRun=%s deleteRemoteMissing=%s",
+                request.localRootPath(),
+                request.remoteRootNodeId,
+                request.dryRun,
+                request.deleteRemoteMissing
+        );
 
         Path localRoot = request.localRootPath();
         RemoteNode remoteRoot = alfrescoHttpClient.getNode(request, request.remoteRootNodeId);
@@ -143,6 +153,16 @@ public class LocalFolderSyncService {
             syncStateStore.save(request.remoteRootNodeId, syncState);
         }
         writeReportsIfRequested(request, report);
+        LOG.infof(
+                "Folder sync completed localRoot=%s remoteRoot=%s uploaded=%d updated=%d skipped=%d deleted=%d failures=%d",
+                request.localRootPath(),
+                request.remoteRootNodeId,
+                report.getFilesUploaded(),
+                report.getFilesUpdated(),
+                report.getFilesSkipped(),
+                report.getRemoteNodesDeleted(),
+                report.getFailedCount()
+        );
         return report;
     }
 
@@ -167,6 +187,7 @@ public class LocalFolderSyncService {
         if (existing != null) {
             if (!existing.folder()) {
                 report.recordFailure(relativePath, "ensure-folder", "Remote node exists but is not a folder");
+                LOG.warnf("Remote node exists but is not a folder for path=%s nodeId=%s", relativePath, existing.id());
                 publishProgress(progressListener, report);
                 throw new IllegalStateException("Remote node exists but is not a folder: " + relativeDir);
             }
@@ -181,6 +202,7 @@ public class LocalFolderSyncService {
             childrenCache.computeIfAbsent(parentId, ignored -> new LinkedHashMap<>())
                     .put(folderName, new RemoteNode(syntheticId, folderName, true, false, -1L, Instant.now()));
             report.recordItem(relativePath, "create-folder", "DRY_RUN", 0L, syntheticId, folderName);
+            LOG.infof("Dry run folder creation relativePath=%s parentNodeId=%s", relativePath, parentId);
             publishProgress(progressListener, report);
             return syntheticId;
         }
@@ -188,6 +210,7 @@ public class LocalFolderSyncService {
         RemoteNode created = alfrescoHttpClient.createFolder(request, parentId, folderName);
         childrenCache.computeIfAbsent(parentId, ignored -> new LinkedHashMap<>()).put(folderName, created);
         report.recordItem(relativePath, "create-folder", "CREATED", 0L, created.id(), created.name());
+        LOG.infof("Created remote folder relativePath=%s nodeId=%s", relativePath, created.id());
         publishProgress(progressListener, report);
         return created.id();
     }
@@ -211,14 +234,18 @@ public class LocalFolderSyncService {
             long fileSize = Files.size(file);
 
             if (remoteNode == null) {
+                report.recordInProgress(relativePath, "upload-file", fileSize, null, "Uploading file to Alfresco");
+                publishProgress(progressListener, report);
                 report.recordUpload(fileSize);
                 if (!request.dryRun) {
                     RemoteNode uploaded = alfrescoHttpClient.uploadFile(request, remoteParentId, file);
                     childrenCache.computeIfAbsent(remoteParentId, ignored -> new LinkedHashMap<>()).put(fileName, uploaded);
                     storeState(syncState, checksumCache, relativePath, file, uploaded);
                     report.recordItem(relativePath, "upload-file", "UPLOADED", fileSize, uploaded.id(), uploaded.name());
+                    LOG.infof("Uploaded file relativePath=%s size=%d nodeId=%s", relativePath, fileSize, uploaded.id());
                 } else {
                     report.recordItem(relativePath, "upload-file", "DRY_RUN", fileSize, null, null);
+                    LOG.infof("Dry run upload relativePath=%s size=%d", relativePath, fileSize);
                 }
                 publishProgress(progressListener, report);
                 return;
@@ -226,24 +253,30 @@ public class LocalFolderSyncService {
 
             if (!remoteNode.file()) {
                 report.recordFailure(relativePath, "sync-file", "Remote node exists but is not a file");
+                LOG.warnf("Remote node exists but is not a file for path=%s nodeId=%s", relativePath, remoteNode.id());
                 publishProgress(progressListener, report);
                 return;
             }
 
             if (needsUpdate(file, remoteNode, syncState.getEntries().get(relativePath), checksumCache, relativePath)) {
+                report.recordInProgress(relativePath, "update-file", fileSize, remoteNode.id(), "Updating file content in Alfresco");
+                publishProgress(progressListener, report);
                 report.recordUpdate(fileSize);
                 if (!request.dryRun) {
                     RemoteNode updated = alfrescoHttpClient.updateFileContent(request, remoteNode.id(), file);
                     childrenCache.computeIfAbsent(remoteParentId, ignored -> new LinkedHashMap<>()).put(fileName, updated);
                     storeState(syncState, checksumCache, relativePath, file, updated);
                     report.recordItem(relativePath, "update-file", "UPDATED", fileSize, updated.id(), updated.name());
+                    LOG.infof("Updated file relativePath=%s size=%d nodeId=%s", relativePath, fileSize, updated.id());
                 } else {
                     report.recordItem(relativePath, "update-file", "DRY_RUN", fileSize, remoteNode.id(), remoteNode.name());
+                    LOG.infof("Dry run update relativePath=%s size=%d nodeId=%s", relativePath, fileSize, remoteNode.id());
                 }
                 publishProgress(progressListener, report);
             } else {
                 report.recordSkip();
                 report.recordItem(relativePath, "skip-file", "SKIPPED", fileSize, remoteNode.id(), remoteNode.name());
+                LOG.infof("Skipped file relativePath=%s size=%d nodeId=%s", relativePath, fileSize, remoteNode.id());
                 if (!request.dryRun) {
                     String checksum = checksumCache.computeIfAbsent(relativePath, ignored -> sha256(file));
                     syncState.getEntries().put(relativePath, new SyncStateEntry(
@@ -258,6 +291,7 @@ public class LocalFolderSyncService {
             }
         } catch (Exception e) {
             report.recordFailure(relativePath, "sync-file", e.getMessage());
+            LOG.warnf(e, "Failed to sync file relativePath=%s", relativePath);
             publishProgress(progressListener, report);
         }
     }
@@ -297,8 +331,10 @@ public class LocalFolderSyncService {
                     alfrescoHttpClient.deleteNode(request, remoteChild.id());
                     removeStatePrefix(syncState, relativePath);
                     report.recordItem(relativePath, "delete-remote", "DELETED", 0L, remoteChild.id(), remoteChild.name());
+                    LOG.infof("Deleted remote node relativePath=%s nodeId=%s", relativePath, remoteChild.id());
                 } else {
                     report.recordItem(relativePath, "delete-remote", "DRY_RUN", 0L, remoteChild.id(), remoteChild.name());
+                    LOG.infof("Dry run delete relativePath=%s nodeId=%s", relativePath, remoteChild.id());
                 }
                 publishProgress(progressListener, report);
                 remoteChildren.remove(remoteChild.name());
@@ -306,6 +342,7 @@ public class LocalFolderSyncService {
         } catch (Exception e) {
             String relativePath = localRoot.relativize(localDirectory.toAbsolutePath().normalize()).toString();
             report.recordFailure(relativePath, "delete-remote-missing", e.getMessage());
+            LOG.warnf(e, "Failed to reconcile remote children for path=%s", relativePath);
             publishProgress(progressListener, report);
         }
     }

@@ -219,6 +219,10 @@ public class SyncReport {
         items.add(new SyncItemResult(path, operation, "FAILED", -1L, null, message));
     }
 
+    public void recordInProgress(String path, String operation, long sizeInBytes, String remoteNodeId, String message) {
+        items.add(new SyncItemResult(path, operation, "IN_PROGRESS", sizeInBytes, remoteNodeId, message));
+    }
+
     public void recordItem(String path, String operation, String outcome, long sizeInBytes, String remoteNodeId, String message) {
         items.add(new SyncItemResult(path, operation, outcome, sizeInBytes, remoteNodeId, message));
     }

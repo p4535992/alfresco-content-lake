@@ -89,6 +89,48 @@
     .message.ok { color: var(--ok); }
     .message.warn { color: var(--warn); }
     .message.err { color: var(--err); }
+    .log-toolbar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px;
+    }
+    .log-toolbar select { min-width: 260px; }
+    .log-table-wrap {
+      max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: #fff;
+    }
+    table.log-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .log-table th, .log-table td { padding: 10px 12px; border-bottom: 1px solid #eadfcf; vertical-align: top; text-align: left; }
+    .log-table th { position: sticky; top: 0; background: #fbf5ea; z-index: 1; }
+    .log-table td.level { font-weight: 700; white-space: nowrap; }
+    .log-table td.message-cell { white-space: pre-wrap; min-width: 420px; }
+    .log-table tr.level-ERROR td.level, .log-table tr.level-FATAL td.level { color: var(--err); }
+    .log-table tr.level-WARN td.level { color: var(--warn); }
+    .log-table tr.level-INFO td.level { color: var(--ok); }
+    .log-raw {
+      white-space: pre-wrap; font-family: Consolas, monospace; font-size: 0.84rem; background: #2a211b;
+      color: #f7efe6; border-radius: 16px; padding: 16px; min-height: 220px; max-height: 360px; overflow: auto;
+      border: 1px solid rgba(212, 202, 184, 0.35);
+    }
+    .tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .tab-button {
+      border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; background: #fff; color: var(--ink);
+      font: inherit; font-weight: 700; cursor: pointer; box-shadow: none;
+    }
+    .tab-button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .tab-button.success { color: var(--ok); border-color: rgba(43, 122, 75, 0.35); }
+    .tab-button.progress { color: var(--warn); border-color: rgba(165, 91, 23, 0.35); }
+    .tab-button.error { color: var(--err); border-color: rgba(161, 42, 42, 0.35); }
+    .tab-button.active.success, .tab-button.active.progress, .tab-button.active.error { color: #fff; }
+    .transfer-table-wrap {
+      max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: #fff;
+    }
+    table.transfer-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .transfer-table th, .transfer-table td { padding: 10px 12px; border-bottom: 1px solid #eadfcf; vertical-align: top; text-align: left; }
+    .transfer-table th { position: sticky; top: 0; background: #fbf5ea; z-index: 1; }
+    .status-chip {
+      display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; border: 1px solid transparent;
+    }
+    .status-chip.success { background: rgba(43, 122, 75, 0.12); color: var(--ok); border-color: rgba(43, 122, 75, 0.25); }
+    .status-chip.progress { background: rgba(165, 91, 23, 0.12); color: var(--warn); border-color: rgba(165, 91, 23, 0.25); }
+    .status-chip.error { background: rgba(161, 42, 42, 0.12); color: var(--err); border-color: rgba(161, 42, 42, 0.25); }
     @media (max-width: 980px) {
       .hero, .grid, .split, .triple, .row.two { grid-template-columns: 1fr; }
       h1 { max-width: none; }
@@ -104,6 +146,13 @@
       <p>Verify the Alfresco connection, choose a site, browse only the folders under its documentLibrary, then sync a local folder and generate a readable CSV report.</p>
     </div>
     <div class="card">
+      <div class="toolbar" style="justify-content: flex-end; margin-bottom: 12px;">
+        <label for="languageSelect" style="margin: 0;">Language</label>
+        <select id="languageSelect" style="max-width: 180px;">
+          <option value="en">English</option>
+          <option value="it">Italiano</option>
+        </select>
+      </div>
       <h3>Operational Notes</h3>
       <p>Use <strong>dry run</strong> first. Files with the same name and the same size are skipped. If the report path is left empty, the server writes a CSV report in the current working directory with a generated filename.</p>
     </div>
@@ -216,9 +265,71 @@
       <h2>Selected Job</h2>
       <div class="toolbar">
         <button id="downloadCsvButton" class="ghost" disabled>Download CSV</button>
+        <button id="openDashboardButton" class="ghost" type="button">Open JobRunr Dashboard</button>
       </div>
       <div id="meta" class="meta"></div>
       <div id="report" class="report">No job selected.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 id="transferSectionTitle">File Transfer Status</h2>
+    <div class="tabs">
+      <button id="tabTransferred" class="tab-button success active" type="button">TRANSFERRED (0)</button>
+      <button id="tabInProgress" class="tab-button progress" type="button">IN PROGRESS (0)</button>
+      <button id="tabError" class="tab-button error" type="button">ERROR (0)</button>
+    </div>
+    <div id="transferSectionHelper" class="helper">The table shows the latest known state for each file in the selected job.</div>
+    <div class="transfer-table-wrap" style="margin-top: 12px;">
+      <table class="transfer-table">
+        <thead>
+        <tr>
+          <th>File</th>
+          <th>Operazione</th>
+          <th>Stato</th>
+          <th>Dimensione</th>
+          <th>Node Id</th>
+          <th>Dettaglio</th>
+        </tr>
+        </thead>
+        <tbody id="transferTableBody">
+        <tr><td colspan="6">Select a job to view file transfer states.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="split">
+    <div class="card">
+      <h2>Logs</h2>
+      <div class="log-toolbar">
+        <select id="logFileSelect">
+          <option value="">Loading logs...</option>
+        </select>
+        <button id="refreshLogsButton" class="ghost" type="button">Refresh logs</button>
+        <label><input id="autoRefreshLogs" type="checkbox" checked>Auto refresh</label>
+      </div>
+      <div id="logsDirectory" class="helper"></div>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+          <tr>
+            <th>Time</th>
+            <th>Level</th>
+            <th>Category</th>
+            <th>Thread</th>
+            <th>Message</th>
+          </tr>
+          </thead>
+          <tbody id="logsTableBody">
+          <tr><td colspan="5">No logs loaded.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Raw Log</h2>
+      <div id="logRaw" class="log-raw">No log entry selected.</div>
     </div>
   </section>
 </div>
@@ -229,6 +340,7 @@
   const messageEl = document.getElementById('message');
   const startButton = document.getElementById('startButton');
   const downloadCsvButton = document.getElementById('downloadCsvButton');
+  const openDashboardButton = document.getElementById('openDashboardButton');
   const browserListEl = document.getElementById('browserList');
   const browserCurrentEl = document.getElementById('browserCurrent');
   const authTokenEl = document.getElementById('authToken');
@@ -240,16 +352,118 @@
   const browseBackButton = document.getElementById('browseBackButton');
   const useCurrentButton = document.getElementById('useCurrentButton');
   const reloadSitesButton = document.getElementById('reloadSitesButton');
+  const logFileSelectEl = document.getElementById('logFileSelect');
+  const refreshLogsButton = document.getElementById('refreshLogsButton');
+  const autoRefreshLogsEl = document.getElementById('autoRefreshLogs');
+  const logsDirectoryEl = document.getElementById('logsDirectory');
+  const logsTableBodyEl = document.getElementById('logsTableBody');
+  const logRawEl = document.getElementById('logRaw');
+  const transferTableBodyEl = document.getElementById('transferTableBody');
+  const tabTransferredEl = document.getElementById('tabTransferred');
+  const tabInProgressEl = document.getElementById('tabInProgress');
+  const tabErrorEl = document.getElementById('tabError');
+  const languageSelectEl = document.getElementById('languageSelect');
+  const transferSectionTitleEl = document.getElementById('transferSectionTitle');
+  const transferSectionHelperEl = document.getElementById('transferSectionHelper');
   let selectedJobId = null;
   let pollHandle = null;
+  let logsPollHandle = null;
   let browserState = null;
   let selectedRemoteFolderId = null;
   let selectedRemoteFolderPath = '';
   let verifiedConnection = false;
   let browseStack = [];
+  let selectedLogRaw = null;
+  let activeTransferTab = 'transferred';
+  let currentSelectedJob = null;
+  let currentLocale = localStorage.getItem('syncer.locale') || 'en';
+  let runtimeInfo = null;
+
+  const i18n = {
+    en: {
+      transferTitle: 'File Transfer Status',
+      transferHelper: 'The table shows the latest known state for each file in the selected job.',
+      transferred: 'TRANSFERRED',
+      inProgress: 'IN PROGRESS',
+      error: 'ERROR',
+      transferSelectJob: 'Select a job to view file transfer states.',
+      transferEmptyStatus: 'No files currently in status {status}.',
+      connectionNotVerified: 'Connection not verified.',
+      verifyBeforeStart: 'Verify the connection before starting a sync.',
+      browseAndSelect: 'Browse the documentLibrary and select a remote folder.',
+      currentTarget: 'Current: {path} ({id})',
+      selectedTarget: 'Selected: {path} ({id})',
+      connectionVerified: 'Connection verified for {userId}.',
+      noSites: 'Connection verified, but no sites are visible for this user.',
+      sitesReloaded: 'Sites reloaded.',
+      verifyCredentials: 'Verifying Alfresco credentials...',
+      connectionFailed: 'Connection verification failed.',
+      loadingDocumentLibrary: 'Loading site documentLibrary...',
+      documentLibraryLoaded: 'documentLibrary loaded.',
+      remoteTargetSelected: 'Remote target folder selected.',
+      localFolderPickerFailed: 'Local folder picker failed.',
+      requestFailed: 'Request failed',
+      csvGenerating: 'Generating CSV download...',
+      csvDownloaded: 'CSV downloaded.',
+      csvFailed: 'CSV download failed',
+      logsDirectory: 'Directory: {path}',
+      logsNoneYet: 'No log files yet',
+      logsNoEntries: 'No log entries available.',
+      logsNoSelected: 'No log entry selected.',
+      logsNotAvailable: 'Log directory not available yet.',
+      logsRefreshFailed: 'Log refresh failed',
+      logsLoadSelectedFailed: 'Failed to load selected log file'
+    },
+    it: {
+      transferTitle: 'Stato Trasferimenti File',
+      transferHelper: "La tabella mostra l'ultimo stato noto per ogni file del job selezionato.",
+      transferred: 'TRASFERITO',
+      inProgress: 'IN CORSO',
+      error: 'ERRORE',
+      transferSelectJob: 'Seleziona un job per vedere gli stati file.',
+      transferEmptyStatus: 'Nessun file nello stato {status}.',
+      connectionNotVerified: 'Connessione non verificata.',
+      verifyBeforeStart: 'Verifica la connessione prima di avviare la sincronizzazione.',
+      browseAndSelect: 'Sfoglia la documentLibrary e seleziona una cartella remota.',
+      currentTarget: 'Corrente: {path} ({id})',
+      selectedTarget: 'Selezionato: {path} ({id})',
+      connectionVerified: 'Connessione verificata per {userId}.',
+      noSites: 'Connessione verificata, ma nessun sito visibile per questo utente.',
+      sitesReloaded: 'Siti ricaricati.',
+      verifyCredentials: 'Verifica credenziali Alfresco in corso...',
+      connectionFailed: 'Verifica della connessione fallita.',
+      loadingDocumentLibrary: 'Caricamento documentLibrary del sito...',
+      documentLibraryLoaded: 'documentLibrary caricata.',
+      remoteTargetSelected: 'Cartella remota selezionata.',
+      localFolderPickerFailed: 'Selettore cartella locale fallito.',
+      requestFailed: 'Richiesta fallita',
+      csvGenerating: 'Generazione download CSV...',
+      csvDownloaded: 'CSV scaricato.',
+      csvFailed: 'Download CSV fallito',
+      logsDirectory: 'Cartella: {path}',
+      logsNoneYet: 'Nessun file di log disponibile',
+      logsNoEntries: 'Nessuna entry di log disponibile.',
+      logsNoSelected: 'Nessuna entry di log selezionata.',
+      logsNotAvailable: 'Cartella log non ancora disponibile.',
+      logsRefreshFailed: 'Aggiornamento log fallito',
+      logsLoadSelectedFailed: 'Caricamento file di log selezionato fallito'
+    }
+  };
 
   authTokenEl.value = localStorage.getItem('syncer.authToken') || '';
   authTokenEl.addEventListener('change', () => localStorage.setItem('syncer.authToken', authTokenEl.value));
+  languageSelectEl.value = currentLocale;
+  languageSelectEl.addEventListener('change', () => {
+    currentLocale = languageSelectEl.value || 'en';
+    localStorage.setItem('syncer.locale', currentLocale);
+    applyLocale();
+    renderTransferTable(currentSelectedJob);
+    if (currentSelectedJob) {
+      renderJob(currentSelectedJob);
+    } else {
+      renderLogs({ logsDirectory: '', files: [], entries: [], selectedFile: '' });
+    }
+  });
 
   ['alfrescoBaseUrl', 'username', 'password', 'ticket'].forEach(id => {
     document.getElementById(id).addEventListener('input', () => resetVerifiedConnection());
@@ -297,6 +511,23 @@
   function setConnectionStatus(text, kind) {
     connectionStatusEl.textContent = text;
     connectionStatusEl.className = `status-box ${kind || 'warn'}`;
+  }
+
+  function t(key, params = {}) {
+    const bundle = i18n[currentLocale] || i18n.en;
+    let value = bundle[key] || i18n.en[key] || key;
+    Object.entries(params).forEach(([paramKey, paramValue]) => {
+      value = value.replaceAll(`{${paramKey}}`, String(paramValue ?? ''));
+    });
+    return value;
+  }
+
+  function applyLocale() {
+    transferSectionTitleEl.textContent = t('transferTitle');
+    transferSectionHelperEl.textContent = t('transferHelper');
+    if (!verifiedConnection) {
+      setConnectionStatus(t('connectionNotVerified'), 'warn');
+    }
   }
 
   function setFieldError(fieldId, message) {
@@ -371,7 +602,7 @@
     }
 
     if (!verifiedConnection) {
-      setConnectionStatus('Verify the connection before starting a sync.', 'err');
+      setConnectionStatus(t('verifyBeforeStart'), 'err');
       valid = false;
     }
     if (!siteSelectEl.value) {
@@ -381,7 +612,7 @@
       setFieldError('siteSelect', '');
     }
     if (!selectedRemoteFolderId) {
-      setMessage('Browse the documentLibrary and select a remote folder.', 'err');
+      setMessage(t('browseAndSelect'), 'err');
       valid = false;
     }
     return valid;
@@ -403,7 +634,7 @@
     browserCurrentEl.textContent = 'Select a site and load its documentLibrary.';
     browserListEl.innerHTML = '';
     verifiedUserEl.textContent = 'Not available.';
-    setConnectionStatus('Connection not verified.', 'warn');
+    setConnectionStatus(t('connectionNotVerified'), 'warn');
   }
 
   function renderSites(sites) {
@@ -506,8 +737,12 @@
       metaEl.innerHTML = '';
       reportEl.textContent = 'No job selected.';
       downloadCsvButton.disabled = true;
+      currentSelectedJob = null;
+      renderTransferTable(null);
       return;
     }
+
+    currentSelectedJob = job;
 
     const report = job.report || {};
     metaEl.innerHTML = `
@@ -515,6 +750,7 @@
       <div><span>Dry run</span><strong>${job.dryRun}</strong></div>
       <div><span>Delete missing</span><strong>${job.deleteRemoteMissing}</strong></div>
       <div><span>Remote root</span><strong>${job.remoteRootNodeId}</strong></div>
+      <div><span>JobRunr job</span><strong>${job.jobRunrId || '-'}</strong></div>
       <div><span>Report output</span><strong>${job.reportOutput || '-'}</strong></div>
       <div><span>Started</span><strong>${formatDate(job.startedAt || report.startedAt)}</strong></div>
       <div><span>Completed</span><strong>${formatDate(job.completedAt || report.completedAt)}</strong></div>
@@ -525,6 +761,110 @@
 
     downloadCsvButton.disabled = !job.report;
     reportEl.textContent = renderReportText(job);
+    renderTransferTable(job);
+  }
+
+  function fileTransferEntries(job) {
+    if (!job || !job.report || !job.report.items) {
+      return [];
+    }
+
+    const latestByPath = new Map();
+    job.report.items.forEach(item => {
+      if (!item || !item.path) {
+        return;
+      }
+      const operation = item.operation || '';
+      if (!['upload-file', 'update-file', 'skip-file', 'sync-file'].includes(operation)) {
+        return;
+      }
+      latestByPath.set(item.path, item);
+    });
+
+    return Array.from(latestByPath.values()).map(item => {
+      const normalizedStatus = normalizeTransferStatus(item);
+      return {
+        path: item.path,
+        operation: item.operation || '-',
+        outcome: item.outcome || '-',
+        statusKey: normalizedStatus.statusKey,
+        status: normalizedStatus.status,
+        statusLabel: normalizedStatus.label,
+        statusClass: normalizedStatus.cssClass,
+        sizeInBytes: item.sizeInBytes,
+        remoteNodeId: item.remoteNodeId || '-',
+        message: item.message || '-'
+      };
+    }).sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  function normalizeTransferStatus(item) {
+    const outcome = (item.outcome || '').toUpperCase();
+    if (outcome === 'FAILED') {
+      return { statusKey: 'error', status: t('error'), label: t('error'), cssClass: 'error' };
+    }
+    if (outcome === 'IN_PROGRESS') {
+      return { statusKey: 'inProgress', status: t('inProgress'), label: t('inProgress'), cssClass: 'progress' };
+    }
+    return { statusKey: 'transferred', status: t('transferred'), label: t('transferred'), cssClass: 'success' };
+  }
+
+  function renderTransferTable(job) {
+    const items = fileTransferEntries(job);
+    const transferredLabel = t('transferred');
+    const inProgressLabel = t('inProgress');
+    const errorLabel = t('error');
+    const transferred = items.filter(item => item.statusKey === 'transferred');
+    const inProgress = items.filter(item => item.statusKey === 'inProgress');
+    const errors = items.filter(item => item.statusKey === 'error');
+
+    tabTransferredEl.textContent = `${transferredLabel} (${transferred.length})`;
+    tabInProgressEl.textContent = `${inProgressLabel} (${inProgress.length})`;
+    tabErrorEl.textContent = `${errorLabel} (${errors.length})`;
+
+    [tabTransferredEl, tabInProgressEl, tabErrorEl].forEach(button => button.classList.remove('active'));
+    if (activeTransferTab === 'inProgress') {
+      tabInProgressEl.classList.add('active');
+    } else if (activeTransferTab === 'error') {
+      tabErrorEl.classList.add('active');
+    } else {
+      tabTransferredEl.classList.add('active');
+    }
+
+    let visibleItems = transferred;
+    if (activeTransferTab === 'inProgress') {
+      visibleItems = inProgress;
+    } else if (activeTransferTab === 'error') {
+      visibleItems = errors;
+    }
+
+    transferTableBodyEl.innerHTML = '';
+    if (!job) {
+      transferTableBodyEl.innerHTML = `<tr><td colspan="6">${escapeHtml(t('transferSelectJob'))}</td></tr>`;
+      return;
+    }
+    if (!visibleItems.length) {
+      const emptyStatus = activeTransferTab === 'inProgress'
+        ? inProgressLabel
+        : activeTransferTab === 'error'
+          ? errorLabel
+          : transferredLabel;
+      transferTableBodyEl.innerHTML = `<tr><td colspan="6">${escapeHtml(t('transferEmptyStatus', { status: emptyStatus }))}</td></tr>`;
+      return;
+    }
+
+    visibleItems.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${escapeHtml(item.path)}</td>
+        <td>${escapeHtml(item.operation)}</td>
+        <td><span class="status-chip ${item.statusClass}">${escapeHtml(item.statusLabel)}</span></td>
+        <td>${item.sizeInBytes != null && item.sizeInBytes >= 0 ? formatBytes(item.sizeInBytes) : '-'}</td>
+        <td>${escapeHtml(item.remoteNodeId)}</td>
+        <td>${escapeHtml(item.message)}</td>
+      `;
+      transferTableBodyEl.appendChild(row);
+    });
   }
 
   function currentBrowsePath() {
@@ -556,6 +896,97 @@
       };
       browserListEl.appendChild(div);
     });
+  }
+
+  function selectedLogFile() {
+    return logFileSelectEl.value || '';
+  }
+
+  function renderLogs(view) {
+    logsDirectoryEl.textContent = view.logsDirectory ? t('logsDirectory', { path: view.logsDirectory }) : t('logsNotAvailable');
+
+    const selectedBefore = selectedLogFile();
+    logFileSelectEl.innerHTML = '';
+    if (!view.files || !view.files.length) {
+      logFileSelectEl.innerHTML = `<option value="">${escapeHtml(t('logsNoneYet'))}</option>`;
+    } else {
+      view.files.forEach(file => {
+        const option = document.createElement('option');
+        option.value = file.fileName;
+        option.textContent = `${file.fileName} · ${formatBytes(file.sizeInBytes)} · ${formatDate(file.modifiedAt)}`;
+        if (file.fileName === (view.selectedFile || selectedBefore)) {
+          option.selected = true;
+        }
+        logFileSelectEl.appendChild(option);
+      });
+    }
+
+    logsTableBodyEl.innerHTML = '';
+    const entries = view.entries || [];
+    if (!entries.length) {
+      logsTableBodyEl.innerHTML = `<tr><td colspan="5">${escapeHtml(t('logsNoEntries'))}</td></tr>`;
+      logRawEl.textContent = t('logsNoSelected');
+      selectedLogRaw = null;
+      return;
+    }
+
+    entries.slice().reverse().forEach(entry => {
+      const row = document.createElement('tr');
+      row.className = `level-${entry.level || 'UNKNOWN'}`;
+      row.innerHTML = `
+        <td>${entry.timestamp || '-'}</td>
+        <td class="level">${entry.level || '-'}</td>
+        <td>${entry.category || '-'}</td>
+        <td>${entry.thread || '-'}</td>
+        <td class="message-cell">${escapeHtml(entry.message || entry.raw || '')}</td>
+      `;
+      row.addEventListener('click', () => {
+        selectedLogRaw = entry.raw || entry.message || '';
+        logRawEl.textContent = selectedLogRaw;
+      });
+      logsTableBodyEl.appendChild(row);
+    });
+
+    const latest = entries[entries.length - 1];
+    const latestRaw = latest ? (latest.raw || latest.message || '') : null;
+    if (!selectedLogRaw || selectedLogRaw === latestRaw) {
+      selectedLogRaw = latestRaw;
+      logRawEl.textContent = selectedLogRaw || t('logsNoSelected');
+    }
+  }
+
+  function escapeHtml(value) {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+  }
+
+  async function loadLogs() {
+    const file = selectedLogFile();
+    const query = file ? `?file=${encodeURIComponent(file)}&limit=200` : '?limit=200';
+    const response = await apiFetch(`/api/logs${query}`);
+    const payload = await response.json();
+    renderLogs(payload);
+  }
+
+  async function loadRuntimeInfo() {
+    const response = await apiFetch('/api/system/runtime');
+    runtimeInfo = await response.json();
+    openDashboardButton.disabled = !runtimeInfo.jobRunrDashboardUrl;
+  }
+
+  function ensureLogsPolling() {
+    if (logsPollHandle) {
+      clearInterval(logsPollHandle);
+      logsPollHandle = null;
+    }
+    if (!autoRefreshLogsEl.checked) {
+      return;
+    }
+    logsPollHandle = setInterval(() => {
+      loadLogs().catch(err => setMessage(err.message || t('logsRefreshFailed'), 'err'));
+    }, 4000);
   }
 
   async function loadJobs() {
@@ -599,7 +1030,7 @@
     if (!validateConnectionFields()) {
       return;
     }
-    setConnectionStatus('Verifying Alfresco credentials...', 'warn');
+    setConnectionStatus(t('verifyCredentials'), 'warn');
     const response = await apiFetch('/api/alfresco/connection/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -608,7 +1039,7 @@
     const status = await response.json();
     verifiedConnection = true;
     verifiedUserEl.textContent = `${status.displayName || status.userId} (${status.userId})`;
-    setConnectionStatus(`Connection verified for ${status.userId}.`, 'ok');
+    setConnectionStatus(t('connectionVerified', { userId: status.userId }), 'ok');
     setFieldError('alfrescoBaseUrl', '');
     setFieldError('username', '');
     setFieldError('password', '');
@@ -628,7 +1059,7 @@
     const sites = await response.json();
     renderSites(sites);
     if (!sites.length) {
-      setConnectionStatus('Connection verified, but no sites are visible for this user.', 'warn');
+      setConnectionStatus(t('noSites'), 'warn');
     }
   }
 
@@ -647,7 +1078,7 @@
     browseStack = [{ id: data.documentLibrary.id, name: data.documentLibrary.name }];
     selectedRemoteFolderId = data.currentNode.id;
     selectedRemoteFolderPath = currentBrowsePath();
-    selectedTargetEl.textContent = `Current: ${selectedRemoteFolderPath} (${selectedRemoteFolderId})`;
+    selectedTargetEl.textContent = t('currentTarget', { path: selectedRemoteFolderPath, id: selectedRemoteFolderId });
     useCurrentButton.disabled = false;
     browseBackButton.disabled = true;
     renderBrowser(data);
@@ -692,7 +1123,7 @@
       await verifyConnection();
     } catch (error) {
       verifiedConnection = false;
-      setConnectionStatus(error.message || 'Connection verification failed.', 'err');
+      setConnectionStatus(error.message || t('connectionFailed'), 'err');
       verifiedUserEl.textContent = 'Not available.';
     }
   });
@@ -700,7 +1131,7 @@
   reloadSitesButton.addEventListener('click', async () => {
     try {
       await reloadSites();
-      setConnectionStatus('Sites reloaded.', 'ok');
+      setConnectionStatus(t('sitesReloaded'), 'ok');
     } catch (error) {
       setConnectionStatus(error.message || 'Failed to reload sites.', 'err');
     }
@@ -708,9 +1139,9 @@
 
   loadSiteRootButton.addEventListener('click', async () => {
     try {
-      setMessage('Loading site documentLibrary...', 'warn');
+      setMessage(t('loadingDocumentLibrary'), 'warn');
       await loadSiteRoot();
-      setMessage('documentLibrary loaded.', 'ok');
+      setMessage(t('documentLibraryLoaded'), 'ok');
     } catch (error) {
       setMessage(error.message || 'Failed to load documentLibrary.', 'err');
     }
@@ -723,7 +1154,7 @@
       await browseCurrentFolder();
       selectedRemoteFolderId = browseStack[browseStack.length - 1].id;
       selectedRemoteFolderPath = currentBrowsePath();
-      selectedTargetEl.textContent = `Current: ${selectedRemoteFolderPath} (${selectedRemoteFolderId})`;
+      selectedTargetEl.textContent = t('currentTarget', { path: selectedRemoteFolderPath, id: selectedRemoteFolderId });
     } catch (error) {
       setMessage(error.message || 'Failed to browse parent folder.', 'err');
     }
@@ -736,15 +1167,15 @@
     }
     selectedRemoteFolderId = browserState.currentNode.id;
     selectedRemoteFolderPath = currentBrowsePath();
-    selectedTargetEl.textContent = `Selected: ${selectedRemoteFolderPath} (${selectedRemoteFolderId})`;
-    setMessage('Remote target folder selected.', 'ok');
+    selectedTargetEl.textContent = t('selectedTarget', { path: selectedRemoteFolderPath, id: selectedRemoteFolderId });
+    setMessage(t('remoteTargetSelected'), 'ok');
   });
 
   document.getElementById('selectLocalRootButton').addEventListener('click', async () => {
     try {
       await selectLocalFolder();
     } catch (error) {
-      setMessage(error.message || 'Local folder picker failed.', 'err');
+      setMessage(error.message || t('localFolderPickerFailed'), 'err');
     }
   });
 
@@ -766,7 +1197,7 @@
       await loadJobs();
       await loadJob(job.jobId);
     } catch (error) {
-      setMessage(error.message || 'Request failed', 'err');
+      setMessage(error.message || t('requestFailed'), 'err');
     } finally {
       startButton.disabled = false;
     }
@@ -778,15 +1209,58 @@
       return;
     }
     try {
-      setMessage('Generating CSV download...', 'warn');
+      setMessage(t('csvGenerating'), 'warn');
       await downloadCsv(selectedJobId);
-      setMessage('CSV downloaded.', 'ok');
+      setMessage(t('csvDownloaded'), 'ok');
     } catch (error) {
-      setMessage(error.message || 'CSV download failed', 'err');
+      setMessage(error.message || t('csvFailed'), 'err');
     }
   });
 
+  refreshLogsButton.addEventListener('click', async () => {
+    try {
+      await loadLogs();
+    } catch (error) {
+      setMessage(error.message || t('logsRefreshFailed'), 'err');
+    }
+  });
+
+  openDashboardButton.addEventListener('click', () => {
+    if (!runtimeInfo || !runtimeInfo.jobRunrDashboardUrl) {
+      setMessage('JobRunr dashboard URL not available.', 'warn');
+      return;
+    }
+    window.open(runtimeInfo.jobRunrDashboardUrl, '_blank');
+  });
+
+  logFileSelectEl.addEventListener('change', async () => {
+    try {
+      selectedLogRaw = null;
+      await loadLogs();
+    } catch (error) {
+      setMessage(error.message || t('logsLoadSelectedFailed'), 'err');
+    }
+  });
+
+  autoRefreshLogsEl.addEventListener('change', () => ensureLogsPolling());
+  tabTransferredEl.addEventListener('click', () => {
+    activeTransferTab = 'transferred';
+    renderTransferTable(currentSelectedJob);
+  });
+  tabInProgressEl.addEventListener('click', () => {
+    activeTransferTab = 'inProgress';
+    renderTransferTable(currentSelectedJob);
+  });
+  tabErrorEl.addEventListener('click', () => {
+    activeTransferTab = 'error';
+    renderTransferTable(currentSelectedJob);
+  });
+
+  applyLocale();
   loadJobs().catch(err => setMessage(err.message, 'err'));
+  loadLogs().catch(err => setMessage(err.message, 'err'));
+  loadRuntimeInfo().catch(err => setMessage(err.message, 'err'));
+  ensureLogsPolling();
 </script>
 </body>
 </html>

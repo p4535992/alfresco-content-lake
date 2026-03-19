@@ -2,13 +2,19 @@ package org.alfresco.contentlake.syncer.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.alfresco.contentlake.syncer.api.StartSyncRequest;
 import org.alfresco.contentlake.syncer.model.SyncJob;
+import org.alfresco.contentlake.syncer.model.SyncJobStatus;
 import org.alfresco.contentlake.syncer.model.SyncReport;
-import org.alfresco.contentlake.syncer.service.LocalFolderSyncService;
+import org.jboss.logging.Logger;
+import org.jobrunr.jobs.JobId;
+import org.jobrunr.jobs.states.StateName;
+import org.jobrunr.scheduling.JobBuilder;
+import org.jobrunr.scheduling.JobRequestScheduler;
+import org.jobrunr.storage.JobNotFoundException;
+import org.jobrunr.storage.StorageProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
@@ -18,33 +24,32 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @ApplicationScoped
 public class SyncJobService {
 
-    @Inject
-    LocalFolderSyncService localFolderSyncService;
+    private static final Logger LOG = Logger.getLogger(SyncJobService.class);
 
     @Inject
     ObjectMapper objectMapper;
 
-    @ConfigProperty(name = "syncer.jobs.max-concurrent", defaultValue = "2")
-    int maxConcurrent;
+    @Inject
+    SyncJobRequestStore syncJobRequestStore;
 
-    @ConfigProperty(name = "syncer.data-dir", defaultValue = ".syncer-data")
+    @Inject
+    JobRequestScheduler jobRequestScheduler;
+
+    @Inject
+    StorageProvider storageProvider;
+
+    @ConfigProperty(name = "syncer.data-dir")
     String dataDir;
 
     private final Map<String, SyncJob> jobs = new ConcurrentHashMap<>();
-    private ExecutorService executorService;
 
     @PostConstruct
     void init() {
-        executorService = Executors.newFixedThreadPool(Math.max(1, maxConcurrent));
         loadPersistedJobs();
     }
 
@@ -61,27 +66,45 @@ public class SyncJobService {
                 request.dryRun,
                 request.deleteRemoteMissing
         );
+
+        syncJobRequestStore.save(jobId, request);
+        String jobRunrId = String.valueOf(jobRequestScheduler.create(JobBuilder.aJob()
+                .withName("Alfresco content sync " + jobId)
+                .withAmountOfRetries(0)
+                .withJobRequest(new SyncJobRunRequest(jobId))));
+        job.setJobRunrId(jobRunrId);
         jobs.put(jobId, job);
         persistJob(job);
-
-        executorService.submit(() -> runJob(job, request));
+        LOG.infof(
+                "Queued JobRunr sync job %s jobRunrId=%s localRoot=%s remoteRoot=%s reportOutput=%s",
+                jobId,
+                jobRunrId,
+                request.localRootPath(),
+                request.remoteRootNodeId,
+                request.reportOutputPath()
+        );
         return job;
     }
 
     public SyncJob get(String jobId) {
         refreshPersistedJobs();
-        return jobs.get(jobId);
+        SyncJob job = jobs.get(jobId);
+        syncStatusFromJobRunr(job);
+        return job;
     }
 
     public Collection<SyncJob> list() {
         refreshPersistedJobs();
+        jobs.values().forEach(this::syncStatusFromJobRunr);
         return jobs.values().stream()
                 .sorted(Comparator.comparing(SyncJob::getCreatedAt).reversed())
                 .toList();
     }
 
-    private void runJob(SyncJob job, StartSyncRequest request) {
+    public void markRunning(String jobId, StartSyncRequest request) {
+        SyncJob job = requireJob(jobId);
         job.markRunning();
+        job.setErrorMessage(null);
         job.setReport(new SyncReport(
                 request.localRootPath().toString(),
                 request.remoteRootNodeId,
@@ -89,33 +112,74 @@ public class SyncJobService {
                 request.deleteRemoteMissing
         ));
         persistJob(job);
+        LOG.infof("Sync job %s is running", jobId);
+    }
 
-        AtomicReference<SyncReport> latestReport = new AtomicReference<>(snapshotReport(job.getReport()));
-        AtomicLong lastProgressPersistAt = new AtomicLong(System.currentTimeMillis());
-        try {
-            SyncReport report = localFolderSyncService.sync(request, currentReport -> {
-                SyncReport snapshot = snapshotReport(currentReport);
-                latestReport.set(snapshot);
-                job.setReport(snapshot);
-                persistProgress(job, lastProgressPersistAt, snapshot.getCompletedAt() != null);
-            });
-            job.markCompleted(report);
-            persistJob(job);
-        } catch (Exception e) {
-            SyncReport partialReport = latestReport.get();
-            if (partialReport == null) {
-                partialReport = new SyncReport(
-                        request.localRootPath().toString(),
-                        request.remoteRootNodeId,
-                        request.dryRun,
-                        request.deleteRemoteMissing
-                );
-            }
-            partialReport.recordFailure(request.localRootPath().toString(), "sync-job", e.getMessage());
-            partialReport.complete();
-            job.markFailed(e.getMessage(), partialReport);
-            persistJob(job);
+    public void updateProgress(String jobId, SyncReport currentReport) {
+        SyncJob job = requireJob(jobId);
+        job.setReport(snapshotReport(currentReport));
+        persistJob(job);
+    }
+
+    public void markCompleted(String jobId, SyncReport report) {
+        SyncJob job = requireJob(jobId);
+        job.markCompleted(report);
+        persistJob(job);
+        LOG.infof("Sync job %s completed", jobId);
+    }
+
+    public void markFailed(String jobId, StartSyncRequest request, Exception error, SyncReport partialReport) {
+        SyncJob job = requireJob(jobId);
+        SyncReport failureReport = partialReport != null
+                ? snapshotReport(partialReport)
+                : new SyncReport(
+                request.localRootPath().toString(),
+                request.remoteRootNodeId,
+                request.dryRun,
+                request.deleteRemoteMissing
+        );
+        failureReport.recordFailure(request.localRootPath().toString(), "sync-job", error.getMessage());
+        failureReport.complete();
+        job.markFailed(error.getMessage(), failureReport);
+        persistJob(job);
+        LOG.errorf(error, "Sync job %s failed: %s", jobId, error.getMessage());
+    }
+
+    private SyncJob requireJob(String jobId) {
+        refreshPersistedJobs();
+        SyncJob job = jobs.get(jobId);
+        if (job == null) {
+            throw new IllegalStateException("Sync job not found: " + jobId);
         }
+        return job;
+    }
+
+    private void syncStatusFromJobRunr(SyncJob job) {
+        if (job == null || job.getJobRunrId() == null || job.getJobRunrId().isBlank()) {
+            return;
+        }
+        try {
+            StateName state = storageProvider.getJobById(JobId.parse(job.getJobRunrId())).getState();
+            SyncJobStatus mappedStatus = mapState(state);
+            if (mappedStatus != null && mappedStatus != job.getStatus()) {
+                job.setStatus(mappedStatus);
+                persistJob(job);
+            }
+        } catch (JobNotFoundException | IllegalArgumentException e) {
+            LOG.debugf(e, "Unable to sync JobRunr status for sync job %s", job.getJobId());
+        }
+    }
+
+    private SyncJobStatus mapState(StateName state) {
+        if (state == null) {
+            return null;
+        }
+        return switch (state) {
+            case ENQUEUED, SCHEDULED, AWAITING -> SyncJobStatus.QUEUED;
+            case PROCESSING -> SyncJobStatus.RUNNING;
+            case SUCCEEDED -> SyncJobStatus.COMPLETED;
+            case FAILED, DELETED -> SyncJobStatus.FAILED;
+        };
     }
 
     private void loadPersistedJobs() {
@@ -177,25 +241,7 @@ public class SyncJobService {
         return jobsDir().resolve(jobId + ".json");
     }
 
-    private void persistProgress(SyncJob job, AtomicLong lastProgressPersistAt, boolean force) {
-        long now = System.currentTimeMillis();
-        long previous = lastProgressPersistAt.get();
-        if (!force && now - previous < 500) {
-            return;
-        }
-        if (lastProgressPersistAt.compareAndSet(previous, now) || force) {
-            persistJob(job);
-        }
-    }
-
     private SyncReport snapshotReport(SyncReport report) {
         return objectMapper.convertValue(report, SyncReport.class);
-    }
-
-    @PreDestroy
-    void shutdown() {
-        if (executorService != null) {
-            executorService.shutdownNow();
-        }
     }
 }

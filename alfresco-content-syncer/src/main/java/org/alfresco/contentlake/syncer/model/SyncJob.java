@@ -5,6 +5,7 @@ import java.time.Instant;
 public class SyncJob {
 
     private String jobId;
+    private String jobRunrId;
     private String localRoot;
     private String remoteRootNodeId;
     private String reportOutput;
@@ -37,6 +38,14 @@ public class SyncJob {
 
     public void setJobId(String jobId) {
         this.jobId = jobId;
+    }
+
+    public String getJobRunrId() {
+        return jobRunrId;
+    }
+
+    public void setJobRunrId(String jobRunrId) {
+        this.jobRunrId = jobRunrId;
     }
 
     public String getLocalRoot() {
