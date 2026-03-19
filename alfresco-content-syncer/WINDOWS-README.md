@@ -24,7 +24,7 @@ mvn -pl alfresco-content-syncer -am clean package -Pwindows-app
 
 Output:
 
-- `alfresco-content-syncer\target\windows\AlfrescoContentSyncer\AlfrescoContentSyncer.exe`
+- `alfresco-content-syncer\dist\windows\AlfrescoContentSyncer\AlfrescoContentSyncer.exe`
 
 Avvio rapido senza app-image:
 
@@ -36,3 +36,7 @@ Note:
 
 - il profilo `windows-app` usa `jpackage` e crea una `app-image`, non un installer MSI
 - l'app resta standalone sul PC Windows di destinazione, senza richiedere un Java esterno separato
+- `dist\windows` e' l'output distribuibile finale
+- `target\` contiene solo artefatti di build temporanei
+- `mvn clean` non rimuove l'app sotto `dist\windows`
+- il comando Maven rigenera `dist\windows\AlfrescoContentSyncer` sovrascrivendo la build precedente

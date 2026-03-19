@@ -10,17 +10,19 @@ import jakarta.ws.rs.ext.Provider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Provider
 @Priority(Priorities.AUTHENTICATION)
 public class ApiTokenFilter implements ContainerRequestFilter {
 
-    @ConfigProperty(name = "syncer.ui.auth-token", defaultValue = "")
-    String expectedToken;
+    @ConfigProperty(name = "syncer.ui.auth-token")
+    Optional<String> expectedToken;
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
-        if (expectedToken == null || expectedToken.isBlank()) {
+        String configuredToken = expectedToken.orElse("").trim();
+        if (configuredToken.isBlank()) {
             return;
         }
 
@@ -37,7 +39,7 @@ public class ApiTokenFilter implements ContainerRequestFilter {
             }
         }
 
-        if (!expectedToken.equals(provided)) {
+        if (!configuredToken.equals(provided)) {
             requestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED)
                     .entity("Missing or invalid syncer token")
                     .build());

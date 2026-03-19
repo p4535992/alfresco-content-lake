@@ -352,6 +352,14 @@ Windows launcher:
 alfresco-content-syncer\run-syncer.cmd
 ```
 
+Windows packaged app:
+
+```bat
+mvn -pl alfresco-content-syncer -am clean package -Pwindows-app
+# output:
+#   alfresco-content-syncer\dist\windows\AlfrescoContentSyncer\AlfrescoContentSyncer.exe
+```
+
 UI:
 
 ```bash

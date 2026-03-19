@@ -93,6 +93,7 @@
                                 </goals>
                                 <configuration>
                                     <target>
+                                        <delete dir="${project.basedir}/dist/windows/AlfrescoContentSyncer" quiet="true"/>
                                         <mkdir dir="${project.build.directory}/jpackage-input"/>
                                         <copy file="${project.build.directory}/${project.build.finalName}-runner.jar"
                                               tofile="${project.build.directory}/jpackage-input/${project.build.finalName}-runner.jar"
@@ -103,7 +104,7 @@
                                             <arg value="--name"/>
                                             <arg value="AlfrescoContentSyncer"/>
                                             <arg value="--dest"/>
-                                            <arg value="${project.build.directory}/windows"/>
+                                            <arg value="${project.basedir}/dist/windows"/>
                                             <arg value="--input"/>
                                             <arg value="${project.build.directory}/jpackage-input"/>
                                             <arg value="--main-jar"/>

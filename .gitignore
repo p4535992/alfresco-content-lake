@@ -23,6 +23,7 @@ target/
 /nbproject/private/
 /nbbuild/
 /dist/
+/alfresco-content-syncer/dist/
 /nbdist/
 /.nb-gradle/
 build/
