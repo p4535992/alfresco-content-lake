@@ -49,13 +49,15 @@ public class SyncJobService {
     }
 
     public SyncJob start(StartSyncRequest request) {
+        String jobId = UUID.randomUUID().toString();
+        request.applyDefaultReportOutput(jobId);
         request.validate();
 
-        String jobId = UUID.randomUUID().toString();
         SyncJob job = new SyncJob(
                 jobId,
                 request.localRootPath().toString(),
                 request.remoteRootNodeId,
+                request.reportOutputPath().toString(),
                 request.dryRun,
                 request.deleteRemoteMissing
         );

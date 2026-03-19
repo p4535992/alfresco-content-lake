@@ -3,14 +3,10 @@ package org.alfresco.contentlake.syncer.api;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class StartSyncRequest implements AlfrescoConnectionRequest {
+public class StartSyncRequest extends AlfrescoConnectionPayload {
 
     public String localRoot;
     public String remoteRootNodeId;
-    public String alfrescoBaseUrl;
-    public String username;
-    public String password;
-    public String ticket;
     public boolean dryRun;
     public boolean deleteRemoteMissing;
     public String reportOutput;
@@ -32,17 +28,6 @@ public class StartSyncRequest implements AlfrescoConnectionRequest {
         validateConnection();
     }
 
-    public void validateConnection() {
-        if (isBlank(alfrescoBaseUrl)) {
-            throw new IllegalArgumentException("alfrescoBaseUrl is required");
-        }
-        boolean hasBasic = !isBlank(username) && !isBlank(password);
-        boolean hasTicket = !isBlank(ticket);
-        if (!hasBasic && !hasTicket) {
-            throw new IllegalArgumentException("Provide username/password or ticket");
-        }
-    }
-
     public Path localRootPath() {
         return Path.of(localRoot).toAbsolutePath().normalize();
     }
@@ -51,29 +36,15 @@ public class StartSyncRequest implements AlfrescoConnectionRequest {
         return isBlank(reportOutput) ? null : Path.of(reportOutput).toAbsolutePath().normalize();
     }
 
-    @Override
-    public String sanitizedBaseUrl() {
-        return alfrescoBaseUrl.endsWith("/")
-                ? alfrescoBaseUrl.substring(0, alfrescoBaseUrl.length() - 1)
-                : alfrescoBaseUrl;
-    }
-
-    @Override
-    public String username() {
-        return username;
-    }
-
-    @Override
-    public String password() {
-        return password;
-    }
-
-    @Override
-    public String ticket() {
-        return ticket;
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
+    public void applyDefaultReportOutput(String jobId) {
+        if (!isBlank(reportOutput)) {
+            reportOutput = reportOutputPath().toString();
+            return;
+        }
+        reportOutput = Path.of("")
+                .toAbsolutePath()
+                .normalize()
+                .resolve("alfresco-content-sync-report-" + jobId + ".csv")
+                .toString();
     }
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -25,12 +25,12 @@
       color: var(--ink);
       background: radial-gradient(circle at top left, #fff7ea, var(--bg) 48%), linear-gradient(135deg, #efe6d5, #f6f1e8);
     }
-    .shell { max-width: 1220px; margin: 0 auto; padding: 32px 20px 56px; }
-    .hero, .grid, .split, .row.two, .triple { display: grid; gap: 20px; }
+    .shell { max-width: 1260px; margin: 0 auto; padding: 32px 20px 56px; }
+    .hero, .grid, .split, .triple, .row.two { display: grid; gap: 20px; }
     .hero { grid-template-columns: 1.2fr 0.8fr; margin-bottom: 24px; }
     .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .split { grid-template-columns: 0.9fr 1.1fr; margin-top: 20px; }
-    .triple { grid-template-columns: 0.8fr 1.2fr 1fr; margin-top: 20px; }
+    .split { grid-template-columns: 0.95fr 1.05fr; margin-top: 20px; }
+    .triple { grid-template-columns: 0.9fr 1.1fr 1fr; margin-top: 20px; }
     .row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .card {
       background: color-mix(in srgb, var(--panel) 92%, white 8%);
@@ -42,32 +42,38 @@
     h1, h2, h3 { margin: 0 0 12px; }
     h1 { font-size: clamp(2rem, 4vw, 3.7rem); line-height: 0.95; letter-spacing: -0.06em; max-width: 10ch; }
     p { margin: 0; color: var(--muted); line-height: 1.5; }
-    .status-pill {
-      display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line);
-      font-size: 0.85rem; margin-bottom: 14px; background: #fff7ea;
-    }
     label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 7px; }
-    input {
+    input, select {
       width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff;
       color: var(--ink); padding: 12px 14px; font: inherit;
     }
+    input.valid, select.valid { border-color: var(--ok); box-shadow: 0 0 0 1px rgba(43, 122, 75, 0.15); }
+    input.invalid, select.invalid { border-color: var(--err); box-shadow: 0 0 0 1px rgba(161, 42, 42, 0.15); }
     button {
       border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--accent), var(--accent-dark));
       color: white; padding: 12px 18px; font: inherit; font-weight: 700; cursor: pointer;
       box-shadow: 0 12px 24px rgba(141, 60, 22, 0.2);
     }
-    button.ghost {
-      background: white; color: var(--ink); border: 1px solid var(--line); box-shadow: none;
-    }
+    button.ghost { background: white; color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
     button:disabled { opacity: 0.65; cursor: wait; }
-    .checks { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 4px; }
+    .toolbar, .checks { display: flex; flex-wrap: wrap; gap: 10px; }
+    .checks { margin-top: 4px; }
     .checks label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; }
     .checks input { width: auto; }
+    .status-pill {
+      display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line);
+      font-size: 0.85rem; margin-bottom: 14px; background: #fff7ea;
+    }
     .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .meta div, .mini-card {
+    .meta div, .mini-card, .status-box {
       background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px;
     }
-    .meta strong { display: block; font-size: 1.1rem; margin-top: 6px; }
+    .meta strong { display: block; font-size: 1.05rem; margin-top: 6px; }
+    .field-error { min-height: 18px; margin-top: 6px; font-size: 0.82rem; color: var(--err); }
+    .helper { margin-top: 6px; font-size: 0.82rem; color: var(--muted); }
+    .status-box.ok { border-color: var(--ok); color: var(--ok); }
+    .status-box.err { border-color: var(--err); color: var(--err); }
+    .status-box.warn { border-color: var(--warn); color: var(--warn); }
     .jobs, .browser-list { display: grid; gap: 12px; max-height: 420px; overflow: auto; }
     .job, .browser-item {
       padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: #fff; cursor: pointer;
@@ -79,13 +85,12 @@
       white-space: pre-wrap; font-family: Consolas, monospace; font-size: 0.9rem; background: #1f262b;
       color: #eef5f5; border-radius: 16px; padding: 16px; min-height: 360px; overflow: auto; line-height: 1.5;
     }
-    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
     .message { margin-top: 12px; font-weight: 700; }
     .message.ok { color: var(--ok); }
     .message.warn { color: var(--warn); }
     .message.err { color: var(--err); }
     @media (max-width: 980px) {
-      .hero, .grid, .split, .row.two, .triple { grid-template-columns: 1fr; }
+      .hero, .grid, .split, .triple, .row.two { grid-template-columns: 1fr; }
       h1 { max-width: none; }
     }
   </style>
@@ -96,11 +101,11 @@
     <div class="card">
       <div class="status-pill">Quarkus UI | local binaries to Alfresco</div>
       <h1>Alfresco Content Syncer</h1>
-      <p>Operational UI to browse Alfresco folders, launch local folder synchronization jobs, track status, and inspect readable reports. Sync runs on the same host where this application is started.</p>
+      <p>Verify the Alfresco connection, choose a site, browse only the folders under its documentLibrary, then sync a local folder and generate a readable CSV report.</p>
     </div>
     <div class="card">
       <h3>Operational Notes</h3>
-      <p>Use <strong>dry run</strong> first. Remote delete is disabled by default because it is destructive. Existing files are updated using size, timestamps, and a persisted SHA-256 manifest to avoid false updates when only local timestamps drift.</p>
+      <p>Use <strong>dry run</strong> first. Files with the same name and the same size are skipped. If the report path is left empty, the server writes a CSV report in the current working directory with a generated filename.</p>
     </div>
   </section>
 
@@ -113,37 +118,59 @@
       </div>
       <div>
         <label for="alfrescoBaseUrl">Alfresco base URL</label>
-        <input id="alfrescoBaseUrl" placeholder="http://localhost:8080">
+        <input id="alfrescoBaseUrl" placeholder="http://localhost:8080/alfresco">
+        <div id="alfrescoBaseUrlError" class="field-error"></div>
       </div>
       <div>
         <label for="username">Username</label>
         <input id="username" placeholder="admin">
+        <div id="usernameError" class="field-error"></div>
       </div>
       <div>
         <label for="password">Password</label>
         <input id="password" type="password" placeholder="admin">
+        <div id="passwordError" class="field-error"></div>
       </div>
       <div>
         <label for="ticket">Ticket</label>
         <input id="ticket" placeholder="TICKET_xxx">
+        <div id="ticketError" class="field-error"></div>
       </div>
       <div class="mini-card">
-        <strong>Tip</strong>
-        <p>Use username/password or a ticket. If <code>syncer.ui.auth-token</code> is configured, the same token protects all <code>/api/*</code> endpoints.</p>
+        <strong>Validation rules</strong>
+        <p>The Alfresco URL must end with <code>/alfresco</code>. Provide username/password or a ticket, then use <strong>Verify connection</strong> before browsing sites.</p>
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top: 14px;">
+      <button id="verifyConnectionButton">Verify connection</button>
+      <button id="reloadSitesButton" class="ghost" disabled>Reload sites</button>
+    </div>
+    <div id="connectionStatus" class="status-box warn">Connection not verified.</div>
+    <div class="row two" style="margin-top: 14px;">
+      <div>
+        <label for="siteSelect">Site</label>
+        <select id="siteSelect" disabled>
+          <option value="">Verify the connection first</option>
+        </select>
+        <div id="siteSelectError" class="field-error"></div>
+      </div>
+      <div class="mini-card">
+        <strong>Authenticated user</strong>
+        <p id="verifiedUser">Not available.</p>
       </div>
     </div>
   </section>
 
   <section class="triple">
     <div class="card">
-      <h2>Browse Alfresco</h2>
-      <label for="browseNodeId">Current folder node id</label>
-      <input id="browseNodeId" placeholder="TARGET_FOLDER_NODE_ID">
-      <div class="toolbar" style="margin-top:12px;">
-        <button id="browseButton" class="ghost">Browse folder</button>
-        <button id="useCurrentButton" class="ghost">Use as sync target</button>
+      <h2>Browse Document Library</h2>
+      <div id="browserCurrent" class="mini-card">Select a site and load its documentLibrary.</div>
+      <div class="helper">Browsing is limited to folders under the selected site's documentLibrary.</div>
+      <div class="toolbar" style="margin-top: 12px;">
+        <button id="loadSiteRootButton" class="ghost" disabled>Load documentLibrary</button>
+        <button id="browseBackButton" class="ghost" disabled>Back</button>
+        <button id="useCurrentButton" class="ghost" disabled>Use current folder</button>
       </div>
-      <div id="browserCurrent" class="mini-card">No folder loaded.</div>
     </div>
     <div class="card">
       <h2>Folders</h2>
@@ -151,27 +178,31 @@
     </div>
     <div class="card">
       <h2>Start Job</h2>
-      <div class="row">
-        <div>
-          <label for="localRoot">Local root</label>
+      <div>
+        <label for="localRoot">Local root</label>
+        <div class="toolbar">
           <input id="localRoot" placeholder="D:\\import\\contracts">
+          <button id="selectLocalRootButton" class="ghost" type="button">Select folder</button>
         </div>
-        <div>
-          <label for="remoteRootNodeId">Remote Alfresco folder node id</label>
-          <input id="remoteRootNodeId" placeholder="TARGET_FOLDER_NODE_ID">
-        </div>
-        <div>
-          <label for="reportOutput">Optional report output path</label>
-          <input id="reportOutput" placeholder="D:\\reports\\sync-report.csv">
-        </div>
-        <div class="checks">
-          <label><input id="dryRun" type="checkbox" checked>Dry run</label>
-          <label><input id="deleteRemoteMissing" type="checkbox">Delete remote missing</label>
-        </div>
-        <div>
-          <button id="startButton">Start sync job</button>
-          <div id="message" class="message"></div>
-        </div>
+        <div id="localRootError" class="field-error"></div>
+      </div>
+      <div style="margin-top: 12px;">
+        <label for="reportOutput">Optional report output path</label>
+        <input id="reportOutput" placeholder="Leave empty for ./alfresco-content-sync-report-&lt;jobId&gt;.csv">
+        <div id="reportOutputError" class="field-error"></div>
+        <div class="helper">If empty, the backend writes a CSV report in the current working directory and excludes it from sync.</div>
+      </div>
+      <div class="mini-card" style="margin-top: 12px;">
+        <strong>Selected remote target</strong>
+        <p id="selectedTarget">No folder selected.</p>
+      </div>
+      <div class="checks" style="margin-top: 12px;">
+        <label><input id="dryRun" type="checkbox" checked>Dry run</label>
+        <label><input id="deleteRemoteMissing" type="checkbox">Delete remote missing</label>
+      </div>
+      <div style="margin-top: 14px;">
+        <button id="startButton">Start sync job</button>
+        <div id="message" class="message"></div>
       </div>
     </div>
   </section>
@@ -201,12 +232,28 @@
   const browserListEl = document.getElementById('browserList');
   const browserCurrentEl = document.getElementById('browserCurrent');
   const authTokenEl = document.getElementById('authToken');
+  const siteSelectEl = document.getElementById('siteSelect');
+  const verifiedUserEl = document.getElementById('verifiedUser');
+  const connectionStatusEl = document.getElementById('connectionStatus');
+  const selectedTargetEl = document.getElementById('selectedTarget');
+  const loadSiteRootButton = document.getElementById('loadSiteRootButton');
+  const browseBackButton = document.getElementById('browseBackButton');
+  const useCurrentButton = document.getElementById('useCurrentButton');
+  const reloadSitesButton = document.getElementById('reloadSitesButton');
   let selectedJobId = null;
   let pollHandle = null;
   let browserState = null;
+  let selectedRemoteFolderId = null;
+  let selectedRemoteFolderPath = '';
+  let verifiedConnection = false;
+  let browseStack = [];
 
   authTokenEl.value = localStorage.getItem('syncer.authToken') || '';
   authTokenEl.addEventListener('change', () => localStorage.setItem('syncer.authToken', authTokenEl.value));
+
+  ['alfrescoBaseUrl', 'username', 'password', 'ticket'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => resetVerifiedConnection());
+  });
 
   function authHeaders() {
     const token = authTokenEl.value.trim();
@@ -215,21 +262,21 @@
 
   function connectionPayload() {
     return {
-      alfrescoBaseUrl: document.getElementById('alfrescoBaseUrl').value,
+      alfrescoBaseUrl: document.getElementById('alfrescoBaseUrl').value.trim(),
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
-      ticket: document.getElementById('ticket').value
+      ticket: document.getElementById('ticket').value.trim()
     };
   }
 
   function jobPayload() {
     return {
       ...connectionPayload(),
-      localRoot: document.getElementById('localRoot').value,
-      remoteRootNodeId: document.getElementById('remoteRootNodeId').value,
+      localRoot: document.getElementById('localRoot').value.trim(),
+      remoteRootNodeId: selectedRemoteFolderId,
       dryRun: document.getElementById('dryRun').checked,
       deleteRemoteMissing: document.getElementById('deleteRemoteMissing').checked,
-      reportOutput: document.getElementById('reportOutput').value
+      reportOutput: document.getElementById('reportOutput').value.trim()
     };
   }
 
@@ -247,26 +294,142 @@
     messageEl.className = `message ${kind || ''}`;
   }
 
-  function formatDate(value) {
-    if (!value) {
-      return '-';
+  function setConnectionStatus(text, kind) {
+    connectionStatusEl.textContent = text;
+    connectionStatusEl.className = `status-box ${kind || 'warn'}`;
+  }
+
+  function setFieldError(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    const error = document.getElementById(`${fieldId}Error`);
+    if (!field || !error) {
+      return;
     }
+    error.textContent = message || '';
+    field.classList.remove('valid', 'invalid');
+    if (message) {
+      field.classList.add('invalid');
+    } else if (field.value.trim()) {
+      field.classList.add('valid');
+    }
+  }
+
+  function normalizeBaseUrl(url) {
+    return url.endsWith('/') ? url.slice(0, -1) : url;
+  }
+
+  function validateConnectionFields() {
+    const payload = connectionPayload();
+    let valid = true;
+    const normalizedBaseUrl = normalizeBaseUrl(payload.alfrescoBaseUrl);
+
+    if (!normalizedBaseUrl) {
+      setFieldError('alfrescoBaseUrl', 'Alfresco URL is required.');
+      valid = false;
+    } else if (!normalizedBaseUrl.toLowerCase().endsWith('/alfresco')) {
+      setFieldError('alfrescoBaseUrl', 'Alfresco URL must end with /alfresco.');
+      valid = false;
+    } else {
+      setFieldError('alfrescoBaseUrl', '');
+    }
+
+    const hasBasic = payload.username.trim() && payload.password;
+    const hasTicket = payload.ticket;
+    if (!hasBasic && !hasTicket) {
+      setFieldError('username', 'Provide username/password or a ticket.');
+      setFieldError('password', 'Provide username/password or a ticket.');
+      setFieldError('ticket', 'Provide username/password or a ticket.');
+      valid = false;
+    } else {
+      setFieldError('username', '');
+      setFieldError('password', '');
+      setFieldError('ticket', '');
+    }
+
+    return valid;
+  }
+
+  function validateJobFields() {
+    let valid = true;
+    if (!validateConnectionFields()) {
+      valid = false;
+    }
+    const localRoot = document.getElementById('localRoot').value.trim();
+    if (!localRoot) {
+      setFieldError('localRoot', 'Local root is required.');
+      valid = false;
+    } else {
+      setFieldError('localRoot', '');
+    }
+
+    const reportOutput = document.getElementById('reportOutput').value.trim();
+    if (reportOutput && !reportOutput.match(/\.(csv|json)$/i)) {
+      setFieldError('reportOutput', 'Report output must end with .csv or .json.');
+      valid = false;
+    } else {
+      setFieldError('reportOutput', '');
+    }
+
+    if (!verifiedConnection) {
+      setConnectionStatus('Verify the connection before starting a sync.', 'err');
+      valid = false;
+    }
+    if (!siteSelectEl.value) {
+      setFieldError('siteSelect', 'Select a site first.');
+      valid = false;
+    } else {
+      setFieldError('siteSelect', '');
+    }
+    if (!selectedRemoteFolderId) {
+      setMessage('Browse the documentLibrary and select a remote folder.', 'err');
+      valid = false;
+    }
+    return valid;
+  }
+
+  function resetVerifiedConnection() {
+    verifiedConnection = false;
+    browserState = null;
+    selectedRemoteFolderId = null;
+    selectedRemoteFolderPath = '';
+    browseStack = [];
+    selectedTargetEl.textContent = 'No folder selected.';
+    siteSelectEl.innerHTML = '<option value="">Verify the connection first</option>';
+    siteSelectEl.disabled = true;
+    loadSiteRootButton.disabled = true;
+    useCurrentButton.disabled = true;
+    browseBackButton.disabled = true;
+    reloadSitesButton.disabled = true;
+    browserCurrentEl.textContent = 'Select a site and load its documentLibrary.';
+    browserListEl.innerHTML = '';
+    verifiedUserEl.textContent = 'Not available.';
+    setConnectionStatus('Connection not verified.', 'warn');
+  }
+
+  function renderSites(sites) {
+    siteSelectEl.innerHTML = '<option value="">Select a site</option>';
+    sites.sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
+    sites.forEach(site => {
+      const option = document.createElement('option');
+      option.value = site.id;
+      option.textContent = `${site.title || site.id} (${site.id})`;
+      siteSelectEl.appendChild(option);
+    });
+    siteSelectEl.disabled = false;
+    loadSiteRootButton.disabled = false;
+    reloadSitesButton.disabled = false;
+  }
+
+  function formatDate(value) {
+    if (!value) return '-';
     return new Date(value).toLocaleString();
   }
 
   function formatBytes(value) {
-    if (value == null || value < 0) {
-      return '-';
-    }
-    if (value < 1024) {
-      return `${value} B`;
-    }
-    if (value < 1024 * 1024) {
-      return `${(value / 1024).toFixed(1)} KB`;
-    }
-    if (value < 1024 * 1024 * 1024) {
-      return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-    }
+    if (value == null || value < 0) return '-';
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
     return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   }
 
@@ -279,6 +442,7 @@
       `Status: ${job.status}`,
       `Local root: ${job.localRoot || '-'}`,
       `Remote root: ${job.remoteRootNodeId || '-'}`,
+      `Report output: ${job.reportOutput || '-'}`,
       `Started: ${formatDate(job.startedAt || report.startedAt)}`,
       `Completed: ${formatDate(job.completedAt || report.completedAt)}`,
       `Duration: ${report.durationMs != null ? `${report.durationMs} ms` : '-'}`,
@@ -351,40 +515,45 @@
       <div><span>Dry run</span><strong>${job.dryRun}</strong></div>
       <div><span>Delete missing</span><strong>${job.deleteRemoteMissing}</strong></div>
       <div><span>Remote root</span><strong>${job.remoteRootNodeId}</strong></div>
+      <div><span>Report output</span><strong>${job.reportOutput || '-'}</strong></div>
       <div><span>Started</span><strong>${formatDate(job.startedAt || report.startedAt)}</strong></div>
       <div><span>Completed</span><strong>${formatDate(job.completedAt || report.completedAt)}</strong></div>
       <div><span>Files uploaded</span><strong>${report.filesUploaded ?? 0}</strong></div>
       <div><span>Files updated</span><strong>${report.filesUpdated ?? 0}</strong></div>
       <div><span>Files skipped</span><strong>${report.filesSkipped ?? 0}</strong></div>
-      <div><span>Failures</span><strong>${report.failedCount ?? (job.errorMessage ? 1 : 0)}</strong></div>
     `;
 
     downloadCsvButton.disabled = !job.report;
     reportEl.textContent = renderReportText(job);
   }
 
+  function currentBrowsePath() {
+    return browseStack.map(item => item.name).join(' / ') || '-';
+  }
+
   function renderBrowser(state) {
     browserState = state;
     browserCurrentEl.innerHTML = state
-      ? `<strong>${state.currentNode.name || '(no name)'}</strong><br><small>${state.currentNode.id}</small>`
-      : 'No folder loaded.';
+      ? `<strong>${state.site.title || state.site.id}</strong><br><small>documentLibrary / ${currentBrowsePath()}</small><br><small>${state.currentNode.id}</small>`
+      : 'Select a site and load its documentLibrary.';
 
     browserListEl.innerHTML = '';
-    if (!state) {
+    if (!state) return;
+
+    const children = state.children || [];
+    if (!children.length) {
+      browserListEl.innerHTML = '<div class="browser-item file"><strong>No subfolders</strong><small>This folder has no child folders visible through Alfresco permissions.</small></div>';
       return;
     }
 
-    const children = state.children || [];
     children.forEach(child => {
       const div = document.createElement('div');
-      div.className = `browser-item ${child.folder ? 'folder' : 'file'}`;
+      div.className = 'browser-item folder';
       div.innerHTML = `<strong>${child.name}</strong><small>${child.id}</small>`;
-      if (child.folder) {
-        div.onclick = async () => {
-          document.getElementById('browseNodeId').value = child.id;
-          await browse(child.id);
-        };
-      }
+      div.onclick = async () => {
+        browseStack.push({ id: child.id, name: child.name });
+        await browseCurrentFolder();
+      };
       browserListEl.appendChild(div);
     });
   }
@@ -413,7 +582,6 @@
             pollHandle = null;
             return;
           }
-
           const inner = await apiFetch(`/api/sync/jobs/${currentJobId}`);
           const updated = await inner.json();
           renderJob(updated);
@@ -427,14 +595,83 @@
     }
   }
 
-  async function browse(nodeId) {
-    const response = await apiFetch('/api/alfresco/browse', {
+  async function verifyConnection() {
+    if (!validateConnectionFields()) {
+      return;
+    }
+    setConnectionStatus('Verifying Alfresco credentials...', 'warn');
+    const response = await apiFetch('/api/alfresco/connection/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...connectionPayload(), nodeId })
+      body: JSON.stringify(connectionPayload())
+    });
+    const status = await response.json();
+    verifiedConnection = true;
+    verifiedUserEl.textContent = `${status.displayName || status.userId} (${status.userId})`;
+    setConnectionStatus(`Connection verified for ${status.userId}.`, 'ok');
+    setFieldError('alfrescoBaseUrl', '');
+    setFieldError('username', '');
+    setFieldError('password', '');
+    setFieldError('ticket', '');
+    await reloadSites();
+  }
+
+  async function reloadSites() {
+    if (!validateConnectionFields()) {
+      return;
+    }
+    const response = await apiFetch('/api/alfresco/sites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(connectionPayload())
+    });
+    const sites = await response.json();
+    renderSites(sites);
+    if (!sites.length) {
+      setConnectionStatus('Connection verified, but no sites are visible for this user.', 'warn');
+    }
+  }
+
+  async function loadSiteRoot() {
+    if (!siteSelectEl.value) {
+      setFieldError('siteSelect', 'Select a site first.');
+      return;
+    }
+    setFieldError('siteSelect', '');
+    const response = await apiFetch('/api/alfresco/sites/browse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...connectionPayload(), siteId: siteSelectEl.value })
+    });
+    const data = await response.json();
+    browseStack = [{ id: data.documentLibrary.id, name: data.documentLibrary.name }];
+    selectedRemoteFolderId = data.currentNode.id;
+    selectedRemoteFolderPath = currentBrowsePath();
+    selectedTargetEl.textContent = `Current: ${selectedRemoteFolderPath} (${selectedRemoteFolderId})`;
+    useCurrentButton.disabled = false;
+    browseBackButton.disabled = true;
+    renderBrowser(data);
+  }
+
+  async function browseCurrentFolder() {
+    const current = browseStack[browseStack.length - 1];
+    const response = await apiFetch('/api/alfresco/sites/browse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...connectionPayload(), siteId: siteSelectEl.value, folderNodeId: current.id })
     });
     const data = await response.json();
     renderBrowser(data);
+    browseBackButton.disabled = browseStack.length <= 1;
+  }
+
+  async function selectLocalFolder() {
+    const response = await apiFetch('/api/system/local-folder/select', { method: 'POST' });
+    const payload = await response.json();
+    if (payload.path) {
+      document.getElementById('localRoot').value = payload.path;
+      setFieldError('localRoot', '');
+    }
   }
 
   async function downloadCsv(jobId) {
@@ -450,30 +687,74 @@
     URL.revokeObjectURL(url);
   }
 
-  document.getElementById('browseButton').addEventListener('click', async () => {
+  document.getElementById('verifyConnectionButton').addEventListener('click', async () => {
     try {
-      setMessage('Browsing Alfresco folder...', 'warn');
-      await browse(document.getElementById('browseNodeId').value);
-      setMessage('Folder loaded.', 'ok');
+      await verifyConnection();
     } catch (error) {
-      setMessage(error.message || 'Browse failed', 'err');
+      verifiedConnection = false;
+      setConnectionStatus(error.message || 'Connection verification failed.', 'err');
+      verifiedUserEl.textContent = 'Not available.';
     }
   });
 
-  document.getElementById('useCurrentButton').addEventListener('click', () => {
-    const current = browserState?.currentNode;
-    if (!current) {
-      setMessage('Browse a folder first.', 'warn');
+  reloadSitesButton.addEventListener('click', async () => {
+    try {
+      await reloadSites();
+      setConnectionStatus('Sites reloaded.', 'ok');
+    } catch (error) {
+      setConnectionStatus(error.message || 'Failed to reload sites.', 'err');
+    }
+  });
+
+  loadSiteRootButton.addEventListener('click', async () => {
+    try {
+      setMessage('Loading site documentLibrary...', 'warn');
+      await loadSiteRoot();
+      setMessage('documentLibrary loaded.', 'ok');
+    } catch (error) {
+      setMessage(error.message || 'Failed to load documentLibrary.', 'err');
+    }
+  });
+
+  browseBackButton.addEventListener('click', async () => {
+    if (browseStack.length <= 1) return;
+    browseStack.pop();
+    try {
+      await browseCurrentFolder();
+      selectedRemoteFolderId = browseStack[browseStack.length - 1].id;
+      selectedRemoteFolderPath = currentBrowsePath();
+      selectedTargetEl.textContent = `Current: ${selectedRemoteFolderPath} (${selectedRemoteFolderId})`;
+    } catch (error) {
+      setMessage(error.message || 'Failed to browse parent folder.', 'err');
+    }
+  });
+
+  useCurrentButton.addEventListener('click', () => {
+    if (!browserState) {
+      setMessage('Load a documentLibrary folder first.', 'warn');
       return;
     }
-    document.getElementById('remoteRootNodeId').value = current.id;
-    setMessage(`Selected ${current.id} as sync target.`, 'ok');
+    selectedRemoteFolderId = browserState.currentNode.id;
+    selectedRemoteFolderPath = currentBrowsePath();
+    selectedTargetEl.textContent = `Selected: ${selectedRemoteFolderPath} (${selectedRemoteFolderId})`;
+    setMessage('Remote target folder selected.', 'ok');
+  });
+
+  document.getElementById('selectLocalRootButton').addEventListener('click', async () => {
+    try {
+      await selectLocalFolder();
+    } catch (error) {
+      setMessage(error.message || 'Local folder picker failed.', 'err');
+    }
   });
 
   startButton.addEventListener('click', async () => {
     startButton.disabled = true;
     setMessage('Submitting job...', 'warn');
     try {
+      if (!validateJobFields()) {
+        return;
+      }
       const response = await apiFetch('/api/sync/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

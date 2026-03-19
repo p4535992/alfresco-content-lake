@@ -71,12 +71,16 @@ public class LocalFolderSyncService {
         Map<String, String> checksumCache = new HashMap<>();
         Map<Path, String> remoteFolderIds = new HashMap<>();
         remoteFolderIds.put(Path.of(""), request.remoteRootNodeId);
+        Set<Path> ignoredPaths = buildIgnoredPaths(request);
 
         Map<String, Map<String, RemoteNode>> childrenCache = new HashMap<>();
 
         Files.walkFileTree(localRoot, new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                if (shouldIgnore(dir, ignoredPaths)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
                 Path relativeDir = localRoot.relativize(dir);
                 String remoteFolderId = ensureRemoteFolder(
                         request,
@@ -108,6 +112,9 @@ public class LocalFolderSyncService {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (!attrs.isRegularFile()) {
+                    return FileVisitResult.CONTINUE;
+                }
+                if (shouldIgnore(file, ignoredPaths)) {
                     return FileVisitResult.CONTINUE;
                 }
 
@@ -269,6 +276,9 @@ public class LocalFolderSyncService {
             Set<String> localNames = new HashSet<>();
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(localDirectory)) {
                 for (Path entry : stream) {
+                    if (shouldIgnore(entry, buildIgnoredPaths(request))) {
+                        continue;
+                    }
                     localNames.add(entry.getFileName().toString());
                 }
             }
@@ -355,34 +365,7 @@ public class LocalFolderSyncService {
             String relativePath
     ) throws IOException {
         long localSize = Files.size(localFile);
-        if (localSize != remoteNode.sizeInBytes()) {
-            return true;
-        }
-
-        Instant remoteModifiedAt = remoteNode.modifiedAt();
-        if (remoteModifiedAt == null) {
-            return true;
-        }
-
-        Instant localModifiedAt = Files.getLastModifiedTime(localFile).toInstant();
-        if (!localModifiedAt.isAfter(remoteModifiedAt)) {
-            return false;
-        }
-
-        if (stateEntry == null || stateEntry.getRemoteModifiedAt() == null) {
-            return true;
-        }
-
-        if (!remoteNode.id().equals(stateEntry.getRemoteNodeId())) {
-            return true;
-        }
-
-        if (!remoteModifiedAt.equals(stateEntry.getRemoteModifiedAt())) {
-            return true;
-        }
-
-        String checksum = checksumCache.computeIfAbsent(relativePath, ignored -> sha256(localFile));
-        return !checksum.equals(stateEntry.getSha256());
+        return localSize != remoteNode.sizeInBytes();
     }
 
     boolean needsUpdate(Path localFile, RemoteNode remoteNode) throws IOException {
@@ -432,5 +415,26 @@ public class LocalFolderSyncService {
             builder.append(String.format("%02x", value));
         }
         return builder.toString();
+    }
+
+    private Set<Path> buildIgnoredPaths(StartSyncRequest request) {
+        Set<Path> ignoredPaths = new HashSet<>();
+        Path reportOutput = request.reportOutputPath();
+        if (reportOutput == null) {
+            return ignoredPaths;
+        }
+
+        ignoredPaths.add(reportOutput.toAbsolutePath().normalize());
+        String fileName = reportOutput.getFileName().toString().toLowerCase();
+        if (!fileName.endsWith(".csv")) {
+            String csvName = reportOutput.getFileName().toString().replaceFirst("(\\.[^.]+)?$", ".csv");
+            ignoredPaths.add(reportOutput.resolveSibling(csvName).toAbsolutePath().normalize());
+        }
+        return ignoredPaths;
+    }
+
+    private boolean shouldIgnore(Path candidate, Set<Path> ignoredPaths) {
+        Path normalized = candidate.toAbsolutePath().normalize();
+        return ignoredPaths.contains(normalized);
     }
 }

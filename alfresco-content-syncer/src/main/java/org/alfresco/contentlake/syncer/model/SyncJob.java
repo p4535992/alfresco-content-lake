@@ -7,6 +7,7 @@ public class SyncJob {
     private String jobId;
     private String localRoot;
     private String remoteRootNodeId;
+    private String reportOutput;
     private boolean dryRun;
     private boolean deleteRemoteMissing;
     private Instant createdAt;
@@ -19,10 +20,11 @@ public class SyncJob {
     public SyncJob() {
     }
 
-    public SyncJob(String jobId, String localRoot, String remoteRootNodeId, boolean dryRun, boolean deleteRemoteMissing) {
+    public SyncJob(String jobId, String localRoot, String remoteRootNodeId, String reportOutput, boolean dryRun, boolean deleteRemoteMissing) {
         this.jobId = jobId;
         this.localRoot = localRoot;
         this.remoteRootNodeId = remoteRootNodeId;
+        this.reportOutput = reportOutput;
         this.dryRun = dryRun;
         this.deleteRemoteMissing = deleteRemoteMissing;
         this.createdAt = Instant.now();
@@ -51,6 +53,14 @@ public class SyncJob {
 
     public void setRemoteRootNodeId(String remoteRootNodeId) {
         this.remoteRootNodeId = remoteRootNodeId;
+    }
+
+    public String getReportOutput() {
+        return reportOutput;
+    }
+
+    public void setReportOutput(String reportOutput) {
+        this.reportOutput = reportOutput;
     }
 
     public boolean isDryRun() {

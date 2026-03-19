@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.alfresco.contentlake.syncer.api.AlfrescoConnectionStatusResponse;
 import org.alfresco.contentlake.syncer.api.AlfrescoConnectionRequest;
+import org.alfresco.contentlake.syncer.api.AlfrescoSiteInfo;
 import org.alfresco.contentlake.syncer.model.RemoteNode;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -44,6 +46,79 @@ public class AlfrescoHttpClient {
                     .GET()
                     .build();
             return parseEntry(send(httpRequest, 200));
+        });
+    }
+
+    public AlfrescoConnectionStatusResponse verifyConnection(AlfrescoConnectionRequest request) {
+        return withRetry(() -> {
+            if (request.ticket() == null || request.ticket().isBlank()) {
+                createTicket(request.username(), request.password(), request.authenticationApiBaseUrl());
+            }
+
+            HttpRequest httpRequest = requestBuilder(request, publicUri(request, "/people/-me"))
+                    .GET()
+                    .build();
+            String body = send(httpRequest, 200);
+            try {
+                JsonNode entry = objectMapper.readTree(body).path("entry");
+                String userId = textOrNull(entry.get("id"));
+                String firstName = textOrNull(entry.get("firstName"));
+                String lastName = textOrNull(entry.get("lastName"));
+                String displayName = ((firstName == null ? "" : firstName) + " " + (lastName == null ? "" : lastName)).trim();
+                return new AlfrescoConnectionStatusResponse(userId, displayName.isBlank() ? userId : displayName);
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to parse Alfresco response", e);
+            }
+        });
+    }
+
+    public List<AlfrescoSiteInfo> listSites(AlfrescoConnectionRequest request) {
+        return withRetry(() -> {
+            List<AlfrescoSiteInfo> sites = new ArrayList<>();
+            int skipCount = 0;
+            while (true) {
+                URI uri = publicUri(request, "/sites?skipCount=" + skipCount + "&maxItems=" + PAGE_SIZE);
+                HttpRequest httpRequest = requestBuilder(request, uri).GET().build();
+                List<AlfrescoSiteInfo> page = parseSiteEntries(send(httpRequest, 200));
+                sites.addAll(page);
+                if (page.size() < PAGE_SIZE) {
+                    return sites;
+                }
+                skipCount += PAGE_SIZE;
+            }
+        });
+    }
+
+    public AlfrescoSiteInfo getSite(AlfrescoConnectionRequest request, String siteId) {
+        return withRetry(() -> {
+            HttpRequest httpRequest = requestBuilder(request, publicUri(request, "/sites/" + encode(siteId)))
+                    .GET()
+                    .build();
+            try {
+                JsonNode root = objectMapper.readTree(send(httpRequest, 200));
+                return toSiteInfo(root.path("entry"));
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to parse Alfresco response", e);
+            }
+        });
+    }
+
+    public String getDocumentLibraryNodeId(AlfrescoConnectionRequest request, String siteId) {
+        return withRetry(() -> {
+            HttpRequest httpRequest = requestBuilder(request,
+                    publicUri(request, "/sites/" + encode(siteId) + "/containers/documentLibrary"))
+                    .GET()
+                    .build();
+            try {
+                JsonNode root = objectMapper.readTree(send(httpRequest, 200));
+                String folderId = textOrNull(root.path("entry").get("folderId"));
+                if (folderId == null || folderId.isBlank()) {
+                    throw new IllegalStateException("documentLibrary container not found for site " + siteId);
+                }
+                return folderId;
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to parse Alfresco response", e);
+            }
         });
     }
 
@@ -149,11 +224,18 @@ public class AlfrescoHttpClient {
     }
 
     private URI nodeUri(AlfrescoConnectionRequest request, String pathAndQuery) {
+        return URI.create(request.publicApiBaseUrl() + ticketSuffix(request, pathAndQuery));
+    }
+
+    private URI publicUri(AlfrescoConnectionRequest request, String pathAndQuery) {
+        return URI.create(request.publicApiBaseUrl() + ticketSuffix(request, pathAndQuery));
+    }
+
+    private String ticketSuffix(AlfrescoConnectionRequest request, String pathAndQuery) {
         String separator = pathAndQuery.contains("?") ? "&" : "?";
-        String suffix = request.ticket() != null && !request.ticket().isBlank()
+        return request.ticket() != null && !request.ticket().isBlank()
                 ? pathAndQuery + separator + "alf_ticket=" + encode(request.ticket())
                 : pathAndQuery;
-        return URI.create(request.sanitizedBaseUrl() + "/alfresco/api/-default-/public/alfresco/versions/1" + suffix);
     }
 
     private String send(HttpRequest request, int expectedStatus) {
@@ -195,6 +277,31 @@ public class AlfrescoHttpClient {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to parse Alfresco response", e);
         }
+    }
+
+    private List<AlfrescoSiteInfo> parseSiteEntries(String body) {
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            JsonNode entries = root.path("list").path("entries");
+            List<AlfrescoSiteInfo> sites = new ArrayList<>();
+            if (!entries.isArray()) {
+                return sites;
+            }
+            for (JsonNode entry : entries) {
+                sites.add(toSiteInfo(entry.path("entry")));
+            }
+            return sites;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to parse Alfresco response", e);
+        }
+    }
+
+    private AlfrescoSiteInfo toSiteInfo(JsonNode entryNode) {
+        return new AlfrescoSiteInfo(
+                textOrNull(entryNode.get("id")),
+                textOrNull(entryNode.get("title")),
+                textOrNull(entryNode.get("description"))
+        );
     }
 
     private RemoteNode toRemoteNode(JsonNode entryNode) {
@@ -253,6 +360,19 @@ public class AlfrescoHttpClient {
 
     private String escapeQuotes(String value) {
         return value.replace("\"", "");
+    }
+
+    private void createTicket(String username, String password, String authenticationApiBaseUrl) {
+        String payload = "{"
+                + "\"userId\":\"" + escapeJson(username) + "\","
+                + "\"password\":\"" + escapeJson(password) + "\""
+                + "}";
+        HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(authenticationApiBaseUrl + "/tickets"))
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
+                .build();
+        send(httpRequest, 201);
     }
 
     private <T> T withRetry(IoSupplier<T> supplier) {
