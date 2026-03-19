@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @ApplicationScoped
 public class LocalFolderSyncService {
@@ -44,6 +45,11 @@ public class LocalFolderSyncService {
     CsvReportWriter csvReportWriter;
 
     public SyncReport sync(StartSyncRequest request) throws IOException {
+        return sync(request, ignored -> {
+        });
+    }
+
+    public SyncReport sync(StartSyncRequest request, Consumer<SyncReport> progressListener) throws IOException {
         request.validate();
 
         Path localRoot = request.localRootPath();
@@ -59,6 +65,7 @@ public class LocalFolderSyncService {
                 request.deleteRemoteMissing
         );
         report.recordItem("/", "validate-root", "OK", 0L, remoteRoot.id(), remoteRoot.name());
+        publishProgress(progressListener, report);
 
         SyncState syncState = syncStateStore.load(request.remoteRootNodeId);
         Map<String, String> checksumCache = new HashMap<>();
@@ -71,12 +78,29 @@ public class LocalFolderSyncService {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                 Path relativeDir = localRoot.relativize(dir);
-                String remoteFolderId = ensureRemoteFolder(request, relativeDir, remoteFolderIds, childrenCache, report);
+                String remoteFolderId = ensureRemoteFolder(
+                        request,
+                        relativeDir,
+                        remoteFolderIds,
+                        childrenCache,
+                        report,
+                        progressListener
+                );
                 remoteFolderIds.put(relativeDir, remoteFolderId);
                 report.incrementDirectoriesScanned();
+                publishProgress(progressListener, report);
 
                 if (request.deleteRemoteMissing) {
-                    reconcileRemoteChildren(request, syncState, localRoot, dir, remoteFolderId, childrenCache, report);
+                    reconcileRemoteChildren(
+                            request,
+                            syncState,
+                            localRoot,
+                            dir,
+                            remoteFolderId,
+                            childrenCache,
+                            report,
+                            progressListener
+                    );
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -88,14 +112,26 @@ public class LocalFolderSyncService {
                 }
 
                 report.incrementFilesScanned();
+                publishProgress(progressListener, report);
                 Path parentRelative = localRoot.relativize(file.getParent());
                 String remoteParentId = remoteFolderIds.get(parentRelative);
-                syncFile(request, syncState, checksumCache, localRoot, file, remoteParentId, childrenCache, report);
+                syncFile(
+                        request,
+                        syncState,
+                        checksumCache,
+                        localRoot,
+                        file,
+                        remoteParentId,
+                        childrenCache,
+                        report,
+                        progressListener
+                );
                 return FileVisitResult.CONTINUE;
             }
         });
 
         report.complete();
+        publishProgress(progressListener, report);
         if (!request.dryRun) {
             syncStateStore.save(request.remoteRootNodeId, syncState);
         }
@@ -108,7 +144,8 @@ public class LocalFolderSyncService {
             Path relativeDir,
             Map<Path, String> remoteFolderIds,
             Map<String, Map<String, RemoteNode>> childrenCache,
-            SyncReport report
+            SyncReport report,
+            Consumer<SyncReport> progressListener
     ) {
         if (relativeDir.getNameCount() == 0) {
             return request.remoteRootNodeId;
@@ -123,9 +160,11 @@ public class LocalFolderSyncService {
         if (existing != null) {
             if (!existing.folder()) {
                 report.recordFailure(relativePath, "ensure-folder", "Remote node exists but is not a folder");
+                publishProgress(progressListener, report);
                 throw new IllegalStateException("Remote node exists but is not a folder: " + relativeDir);
             }
             report.recordItem(relativePath, "ensure-folder", "EXISTS", 0L, existing.id(), existing.name());
+            publishProgress(progressListener, report);
             return existing.id();
         }
 
@@ -135,12 +174,14 @@ public class LocalFolderSyncService {
             childrenCache.computeIfAbsent(parentId, ignored -> new LinkedHashMap<>())
                     .put(folderName, new RemoteNode(syntheticId, folderName, true, false, -1L, Instant.now()));
             report.recordItem(relativePath, "create-folder", "DRY_RUN", 0L, syntheticId, folderName);
+            publishProgress(progressListener, report);
             return syntheticId;
         }
 
         RemoteNode created = alfrescoHttpClient.createFolder(request, parentId, folderName);
         childrenCache.computeIfAbsent(parentId, ignored -> new LinkedHashMap<>()).put(folderName, created);
         report.recordItem(relativePath, "create-folder", "CREATED", 0L, created.id(), created.name());
+        publishProgress(progressListener, report);
         return created.id();
     }
 
@@ -152,7 +193,8 @@ public class LocalFolderSyncService {
             Path file,
             String remoteParentId,
             Map<String, Map<String, RemoteNode>> childrenCache,
-            SyncReport report
+            SyncReport report,
+            Consumer<SyncReport> progressListener
     ) {
         String relativePath = localRoot.relativize(file.toAbsolutePath().normalize()).toString();
         String fileName = file.getFileName().toString();
@@ -171,11 +213,13 @@ public class LocalFolderSyncService {
                 } else {
                     report.recordItem(relativePath, "upload-file", "DRY_RUN", fileSize, null, null);
                 }
+                publishProgress(progressListener, report);
                 return;
             }
 
             if (!remoteNode.file()) {
                 report.recordFailure(relativePath, "sync-file", "Remote node exists but is not a file");
+                publishProgress(progressListener, report);
                 return;
             }
 
@@ -189,6 +233,7 @@ public class LocalFolderSyncService {
                 } else {
                     report.recordItem(relativePath, "update-file", "DRY_RUN", fileSize, remoteNode.id(), remoteNode.name());
                 }
+                publishProgress(progressListener, report);
             } else {
                 report.recordSkip();
                 report.recordItem(relativePath, "skip-file", "SKIPPED", fileSize, remoteNode.id(), remoteNode.name());
@@ -202,9 +247,11 @@ public class LocalFolderSyncService {
                             remoteNode.modifiedAt()
                     ));
                 }
+                publishProgress(progressListener, report);
             }
         } catch (Exception e) {
             report.recordFailure(relativePath, "sync-file", e.getMessage());
+            publishProgress(progressListener, report);
         }
     }
 
@@ -215,7 +262,8 @@ public class LocalFolderSyncService {
             Path localDirectory,
             String remoteFolderId,
             Map<String, Map<String, RemoteNode>> childrenCache,
-            SyncReport report
+            SyncReport report,
+            Consumer<SyncReport> progressListener
     ) {
         try {
             Set<String> localNames = new HashSet<>();
@@ -242,11 +290,13 @@ public class LocalFolderSyncService {
                 } else {
                     report.recordItem(relativePath, "delete-remote", "DRY_RUN", 0L, remoteChild.id(), remoteChild.name());
                 }
+                publishProgress(progressListener, report);
                 remoteChildren.remove(remoteChild.name());
             }
         } catch (Exception e) {
             String relativePath = localRoot.relativize(localDirectory.toAbsolutePath().normalize()).toString();
             report.recordFailure(relativePath, "delete-remote-missing", e.getMessage());
+            publishProgress(progressListener, report);
         }
     }
 
@@ -291,6 +341,10 @@ public class LocalFolderSyncService {
             Files.createDirectories(parent);
         }
         Files.writeString(path, content);
+    }
+
+    private void publishProgress(Consumer<SyncReport> progressListener, SyncReport report) {
+        progressListener.accept(report);
     }
 
     boolean needsUpdate(

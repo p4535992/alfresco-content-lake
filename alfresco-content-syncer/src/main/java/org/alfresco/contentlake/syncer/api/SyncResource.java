@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.alfresco.contentlake.syncer.job.SyncJobService;
 import org.alfresco.contentlake.syncer.model.SyncJob;
+import org.alfresco.contentlake.syncer.report.CsvReportWriter;
 
 import java.util.Collection;
 
@@ -22,6 +23,9 @@ public class SyncResource {
 
     @Inject
     SyncJobService syncJobService;
+
+    @Inject
+    CsvReportWriter csvReportWriter;
 
     @GET
     @Path("/jobs")
@@ -39,6 +43,25 @@ public class SyncResource {
         return job;
     }
 
+    @GET
+    @Path("/jobs/{jobId}/report.csv")
+    @Produces("text/csv")
+    public Response downloadCsvReport(@PathParam("jobId") String jobId) {
+        SyncJob job = syncJobService.get(jobId);
+        if (job == null) {
+            throw new WebApplicationException("Job not found", Response.Status.NOT_FOUND);
+        }
+        if (job.getReport() == null) {
+            throw new WebApplicationException("Report not available yet", Response.Status.CONFLICT);
+        }
+
+        String csv = csvReportWriter.write(job.getReport());
+        return Response.ok(csv)
+                .type("text/csv")
+                .header("Content-Disposition", "attachment; filename=\"" + jobId + "-report.csv\"")
+                .build();
+    }
+
     @POST
     @Path("/jobs")
     public Response startJob(StartSyncRequest request) {
@@ -47,6 +70,8 @@ public class SyncResource {
             return Response.status(Response.Status.ACCEPTED).entity(job).build();
         } catch (IllegalArgumentException e) {
             throw new WebApplicationException(e.getMessage(), Response.Status.BAD_REQUEST);
+        } catch (IllegalStateException e) {
+            throw new WebApplicationException(e.getMessage(), Response.Status.SERVICE_UNAVAILABLE);
         }
     }
 }

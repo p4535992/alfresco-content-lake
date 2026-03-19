@@ -327,6 +327,7 @@ The `alfresco-content-syncer` module is separate from the Content Lake ingestion
 - persisted job/report history under `.syncer-data`
 - optional token protection for all `/api/*` endpoints
 - CSV report generation with per-item rows for human review
+- live progress snapshots while a job is running
 
 Default behavior:
 
@@ -334,14 +335,21 @@ Default behavior:
 - uploads missing files
 - updates existing files when `size` differs or local `lastModified` is newer than Alfresco `modifiedAt`
 - uses a persisted SHA-256 manifest to avoid false updates when only local timestamps drift
-- returns a final JSON report via REST and UI
+- returns a live JSON report via REST and a readable progress/report view in the UI
 - writes CSV when `reportOutput` ends with `.csv`; otherwise writes JSON plus a companion `.csv`
 - does not delete remote nodes unless explicitly enabled
+- runs entirely inside the local Quarkus process with no extra queueing services
 
 Run it:
 
 ```bash
 java -jar alfresco-content-syncer/target/alfresco-content-syncer-1.0.0-SNAPSHOT-runner.jar
+```
+
+Windows launcher:
+
+```bat
+alfresco-content-syncer\run-syncer.cmd
 ```
 
 UI:
@@ -373,6 +381,7 @@ Job status:
 ```bash
 curl http://localhost:9093/api/sync/jobs
 curl http://localhost:9093/api/sync/jobs/{jobId}
+curl -OJ http://localhost:9093/api/sync/jobs/{jobId}/report.csv
 ```
 
 Browse remote folders:

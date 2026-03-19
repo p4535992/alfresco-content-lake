@@ -18,6 +18,8 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -65,10 +67,12 @@ public class SyncJobService {
     }
 
     public SyncJob get(String jobId) {
+        refreshPersistedJobs();
         return jobs.get(jobId);
     }
 
     public Collection<SyncJob> list() {
+        refreshPersistedJobs();
         return jobs.values().stream()
                 .sorted(Comparator.comparing(SyncJob::getCreatedAt).reversed())
                 .toList();
@@ -76,18 +80,35 @@ public class SyncJobService {
 
     private void runJob(SyncJob job, StartSyncRequest request) {
         job.markRunning();
+        job.setReport(new SyncReport(
+                request.localRootPath().toString(),
+                request.remoteRootNodeId,
+                request.dryRun,
+                request.deleteRemoteMissing
+        ));
         persistJob(job);
+
+        AtomicReference<SyncReport> latestReport = new AtomicReference<>(snapshotReport(job.getReport()));
+        AtomicLong lastProgressPersistAt = new AtomicLong(System.currentTimeMillis());
         try {
-            SyncReport report = localFolderSyncService.sync(request);
+            SyncReport report = localFolderSyncService.sync(request, currentReport -> {
+                SyncReport snapshot = snapshotReport(currentReport);
+                latestReport.set(snapshot);
+                job.setReport(snapshot);
+                persistProgress(job, lastProgressPersistAt, snapshot.getCompletedAt() != null);
+            });
             job.markCompleted(report);
             persistJob(job);
         } catch (Exception e) {
-            SyncReport partialReport = new SyncReport(
-                    request.localRootPath().toString(),
-                    request.remoteRootNodeId,
-                    request.dryRun,
-                    request.deleteRemoteMissing
-            );
+            SyncReport partialReport = latestReport.get();
+            if (partialReport == null) {
+                partialReport = new SyncReport(
+                        request.localRootPath().toString(),
+                        request.remoteRootNodeId,
+                        request.dryRun,
+                        request.deleteRemoteMissing
+                );
+            }
             partialReport.recordFailure(request.localRootPath().toString(), "sync-job", e.getMessage());
             partialReport.complete();
             job.markFailed(e.getMessage(), partialReport);
@@ -116,6 +137,27 @@ public class SyncJobService {
         }
     }
 
+    private void refreshPersistedJobs() {
+        Path jobsDir = jobsDir();
+        if (!Files.exists(jobsDir)) {
+            return;
+        }
+
+        try (var stream = Files.list(jobsDir)) {
+            stream.filter(path -> path.getFileName().toString().endsWith(".json"))
+                    .forEach(path -> {
+                        try {
+                            SyncJob persistedJob = objectMapper.readValue(path.toFile(), SyncJob.class);
+                            jobs.put(persistedJob.getJobId(), persistedJob);
+                        } catch (IOException e) {
+                            throw new IllegalStateException("Failed to refresh persisted job " + path, e);
+                        }
+                    });
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to refresh persisted jobs", e);
+        }
+    }
+
     private void persistJob(SyncJob job) {
         try {
             Files.createDirectories(jobsDir());
@@ -131,6 +173,21 @@ public class SyncJobService {
 
     private Path jobPath(String jobId) {
         return jobsDir().resolve(jobId + ".json");
+    }
+
+    private void persistProgress(SyncJob job, AtomicLong lastProgressPersistAt, boolean force) {
+        long now = System.currentTimeMillis();
+        long previous = lastProgressPersistAt.get();
+        if (!force && now - previous < 500) {
+            return;
+        }
+        if (lastProgressPersistAt.compareAndSet(previous, now) || force) {
+            persistJob(job);
+        }
+    }
+
+    private SyncReport snapshotReport(SyncReport report) {
+        return objectMapper.convertValue(report, SyncReport.class);
     }
 
     @PreDestroy
