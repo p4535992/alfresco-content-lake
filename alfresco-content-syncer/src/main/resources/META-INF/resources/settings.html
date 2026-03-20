@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syncer Settings</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --panel: #fffdf8;
+      --ink: #1d2a33;
+      --muted: #68757e;
+      --line: #d4cab8;
+      --accent: #c35f2d;
+      --accent-dark: #8d3c16;
+      --ok: #2b7a4b;
+      --warn: #a55b17;
+      --err: #a12a2a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top left, #fff7ea, var(--bg) 48%), linear-gradient(135deg, #efe6d5, #f6f1e8);
+    }
+    .shell { max-width: 920px; margin: 0 auto; padding: 32px 20px 56px; }
+    .card {
+      background: color-mix(in srgb, var(--panel) 92%, white 8%);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 16px 40px rgba(83, 59, 31, 0.08);
+      margin-bottom: 20px;
+    }
+    h1, h2 { margin: 0 0 12px; }
+    p { margin: 0; color: var(--muted); line-height: 1.5; }
+    label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 7px; }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--ink);
+      padding: 12px 14px;
+      font: inherit;
+    }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; }
+    .row { margin-top: 14px; }
+    .mini-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .mini-card strong { display: block; font-size: 1rem; margin-top: 6px; }
+    button {
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: white;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 12px 24px rgba(141, 60, 22, 0.2);
+    }
+    button.ghost { background: white; color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
+    .message { margin-top: 14px; font-weight: 700; }
+    .message.ok { color: var(--ok); }
+    .message.warn { color: var(--warn); }
+    .message.err { color: var(--err); }
+    .helper { margin-top: 6px; font-size: 0.84rem; color: var(--muted); }
+    .field-error { min-height: 18px; margin-top: 6px; font-size: 0.82rem; color: var(--err); }
+    .checkline { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+    .checkline input { width: auto; }
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <section class="card">
+    <h1>Settings</h1>
+    <p>These values are saved in an external config override file. Port, browser auto-open and data storage root require an application restart.</p>
+  </section>
+
+  <section class="card">
+    <h2>Runtime</h2>
+    <div class="grid">
+      <div>
+        <label for="httpPort">HTTP port</label>
+        <input id="httpPort" type="number" min="1" max="65535" placeholder="9093">
+        <div id="httpPortError" class="field-error"></div>
+      </div>
+      <div>
+        <label for="dataStorageRoot">Data storage root</label>
+        <div class="toolbar">
+          <input id="dataStorageRoot" placeholder="D:/syncer-data">
+          <button id="browseStorageRootButton" class="ghost" type="button">Select folder</button>
+        </div>
+        <div id="dataStorageRootError" class="field-error"></div>
+      </div>
+    </div>
+    <div class="row">
+      <label class="checkline"><input id="openBrowserOnStartup" type="checkbox">Open browser automatically on startup</label>
+    </div>
+    <div class="toolbar row">
+      <button id="saveSettingsButton" type="button">Save settings</button>
+      <button id="reloadSettingsButton" class="ghost" type="button">Reload settings</button>
+      <button id="backToMainButton" class="ghost" type="button">Back to main UI</button>
+    </div>
+    <div id="settingsMessage" class="message"></div>
+  </section>
+
+  <section class="card">
+    <h2>Effective Paths</h2>
+    <div class="grid">
+      <div class="mini-card"><span>Config file</span><strong id="configFilePath">-</strong></div>
+      <div class="mini-card"><span>Logs directory</span><strong id="logsDir">-</strong></div>
+      <div class="mini-card"><span>Sync state directory</span><strong id="dataDir">-</strong></div>
+      <div class="mini-card"><span>JobRunr / H2 directory</span><strong id="jobrunrDataDir">-</strong></div>
+    </div>
+    <div class="helper">The external file is loaded from the application root at startup. Changing these values does not mutate the embedded `application.properties` inside the jar.</div>
+  </section>
+</div>
+<script>
+  const authToken = localStorage.getItem('syncer.authToken') || '';
+  const messageEl = document.getElementById('settingsMessage');
+  const httpPortEl = document.getElementById('httpPort');
+  const dataStorageRootEl = document.getElementById('dataStorageRoot');
+  const openBrowserOnStartupEl = document.getElementById('openBrowserOnStartup');
+
+  function authHeaders() {
+    return authToken ? { 'X-Syncer-Token': authToken } : {};
+  }
+
+  async function apiFetch(url, options = {}) {
+    const headers = { ...(options.headers || {}), ...authHeaders() };
+    const response = await fetch(url, { ...options, headers });
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    return response;
+  }
+
+  function setMessage(text, kind) {
+    messageEl.textContent = text || '';
+    messageEl.className = `message ${kind || ''}`;
+  }
+
+  function setFieldError(id, message) {
+    document.getElementById(`${id}Error`).textContent = message || '';
+  }
+
+  function fillForm(settings) {
+    httpPortEl.value = settings.httpPort ?? '';
+    dataStorageRootEl.value = settings.dataStorageRoot || '';
+    openBrowserOnStartupEl.checked = !!settings.openBrowserOnStartup;
+    document.getElementById('configFilePath').textContent = settings.configFilePath || '-';
+    document.getElementById('logsDir').textContent = settings.logsDir || '-';
+    document.getElementById('dataDir').textContent = settings.dataDir || '-';
+    document.getElementById('jobrunrDataDir').textContent = settings.jobrunrDataDir || '-';
+  }
+
+  function validate() {
+    let valid = true;
+    const port = Number(httpPortEl.value);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      setFieldError('httpPort', 'HTTP port must be between 1 and 65535.');
+      valid = false;
+    } else {
+      setFieldError('httpPort', '');
+    }
+
+    if (!dataStorageRootEl.value.trim()) {
+      setFieldError('dataStorageRoot', 'Data storage root is required.');
+      valid = false;
+    } else {
+      setFieldError('dataStorageRoot', '');
+    }
+    return valid;
+  }
+
+  async function loadSettings() {
+    const response = await apiFetch('/api/system/settings');
+    const settings = await response.json();
+    fillForm(settings);
+  }
+
+  async function saveSettings() {
+    if (!validate()) {
+      return;
+    }
+    const payload = {
+      httpPort: Number(httpPortEl.value),
+      openBrowserOnStartup: openBrowserOnStartupEl.checked,
+      dataStorageRoot: dataStorageRootEl.value.trim()
+    };
+    const response = await apiFetch('/api/system/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const settings = await response.json();
+    fillForm(settings);
+    setMessage('Settings saved. Restart the application to apply the new port or data path.', 'ok');
+  }
+
+  async function selectFolder() {
+    const response = await apiFetch('/api/system/local-folder/select', { method: 'POST' });
+    const payload = await response.json();
+    if (payload.path) {
+      dataStorageRootEl.value = payload.path;
+      setFieldError('dataStorageRoot', '');
+    }
+  }
+
+  document.getElementById('saveSettingsButton').addEventListener('click', () => {
+    setMessage('Saving settings...', 'warn');
+    saveSettings().catch(error => setMessage(error.message || 'Failed to save settings.', 'err'));
+  });
+
+  document.getElementById('reloadSettingsButton').addEventListener('click', () => {
+    setMessage('Reloading settings...', 'warn');
+    loadSettings()
+      .then(() => setMessage('Settings reloaded.', 'ok'))
+      .catch(error => setMessage(error.message || 'Failed to reload settings.', 'err'));
+  });
+
+  document.getElementById('browseStorageRootButton').addEventListener('click', () => {
+    selectFolder().catch(error => setMessage(error.message || 'Folder selection failed.', 'err'));
+  });
+
+  document.getElementById('backToMainButton').addEventListener('click', () => {
+    window.location.href = '/';
+  });
+
+  loadSettings().catch(error => setMessage(error.message || 'Failed to load settings.', 'err'));
+</script>
+</body>
+</html>

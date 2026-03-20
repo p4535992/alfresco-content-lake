@@ -1,10 +1,10 @@
 package org.alfresco.contentlake.syncer.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.alfresco.contentlake.syncer.api.StartSyncRequest;
+import org.alfresco.contentlake.syncer.api.JobRunrSummaryResponse;
 import org.alfresco.contentlake.syncer.model.SyncJob;
 import org.alfresco.contentlake.syncer.model.SyncJobStatus;
 import org.alfresco.contentlake.syncer.model.SyncReport;
@@ -14,17 +14,12 @@ import org.jobrunr.jobs.states.StateName;
 import org.jobrunr.scheduling.JobBuilder;
 import org.jobrunr.scheduling.JobRequestScheduler;
 import org.jobrunr.storage.JobNotFoundException;
+import org.jobrunr.storage.JobStats;
 import org.jobrunr.storage.StorageProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class SyncJobService {
@@ -38,20 +33,22 @@ public class SyncJobService {
     SyncJobRequestStore syncJobRequestStore;
 
     @Inject
+    SyncJobRepository syncJobRepository;
+
+    @Inject
     JobRequestScheduler jobRequestScheduler;
 
     @Inject
     StorageProvider storageProvider;
 
-    @ConfigProperty(name = "syncer.data-dir")
-    String dataDir;
+    @Inject
+    SyncReportArchiveRepository syncReportArchiveRepository;
 
-    private final Map<String, SyncJob> jobs = new ConcurrentHashMap<>();
+    @Inject
+    org.alfresco.contentlake.syncer.report.CsvReportWriter csvReportWriter;
 
-    @PostConstruct
-    void init() {
-        loadPersistedJobs();
-    }
+    @ConfigProperty(name = "syncer.report-store.enabled", defaultValue = "true")
+    boolean reportStoreEnabled;
 
     public SyncJob start(StartSyncRequest request) {
         String jobId = UUID.randomUUID().toString();
@@ -73,8 +70,7 @@ public class SyncJobService {
                 .withAmountOfRetries(0)
                 .withJobRequest(new SyncJobRunRequest(jobId))));
         job.setJobRunrId(jobRunrId);
-        jobs.put(jobId, job);
-        persistJob(job);
+        syncJobRepository.save(job);
         LOG.infof(
                 "Queued JobRunr sync job %s jobRunrId=%s localRoot=%s remoteRoot=%s reportOutput=%s",
                 jobId,
@@ -87,18 +83,33 @@ public class SyncJobService {
     }
 
     public SyncJob get(String jobId) {
-        refreshPersistedJobs();
-        SyncJob job = jobs.get(jobId);
+        SyncJob job = syncJobRepository.findById(jobId).orElse(null);
         syncStatusFromJobRunr(job);
         return job;
     }
 
     public Collection<SyncJob> list() {
-        refreshPersistedJobs();
-        jobs.values().forEach(this::syncStatusFromJobRunr);
-        return jobs.values().stream()
+        return syncJobRepository.findAll().stream()
+                .peek(this::syncStatusFromJobRunr)
                 .sorted(Comparator.comparing(SyncJob::getCreatedAt).reversed())
                 .toList();
+    }
+
+    public JobRunrSummaryResponse jobRunrSummary() {
+        JobStats stats = storageProvider.getJobStats();
+        return new JobRunrSummaryResponse(
+                stats.getTotal(),
+                stats.getAwaiting(),
+                stats.getScheduled(),
+                stats.getEnqueued(),
+                stats.getProcessing(),
+                stats.getFailed(),
+                stats.getSucceeded(),
+                stats.getDeleted(),
+                stats.getAllTimeSucceeded(),
+                stats.getRecurringJobs(),
+                stats.getBackgroundJobServers()
+        );
     }
 
     public void markRunning(String jobId, StartSyncRequest request) {
@@ -111,20 +122,21 @@ public class SyncJobService {
                 request.dryRun,
                 request.deleteRemoteMissing
         ));
-        persistJob(job);
+        syncJobRepository.save(job);
         LOG.infof("Sync job %s is running", jobId);
     }
 
     public void updateProgress(String jobId, SyncReport currentReport) {
         SyncJob job = requireJob(jobId);
         job.setReport(snapshotReport(currentReport));
-        persistJob(job);
+        syncJobRepository.save(job);
     }
 
     public void markCompleted(String jobId, SyncReport report) {
         SyncJob job = requireJob(jobId);
         job.markCompleted(report);
-        persistJob(job);
+        syncJobRepository.save(job);
+        archiveReport(jobId, report);
         LOG.infof("Sync job %s completed", jobId);
     }
 
@@ -141,17 +153,14 @@ public class SyncJobService {
         failureReport.recordFailure(request.localRootPath().toString(), "sync-job", error.getMessage());
         failureReport.complete();
         job.markFailed(error.getMessage(), failureReport);
-        persistJob(job);
+        syncJobRepository.save(job);
+        archiveReport(jobId, failureReport);
         LOG.errorf(error, "Sync job %s failed: %s", jobId, error.getMessage());
     }
 
     private SyncJob requireJob(String jobId) {
-        refreshPersistedJobs();
-        SyncJob job = jobs.get(jobId);
-        if (job == null) {
-            throw new IllegalStateException("Sync job not found: " + jobId);
-        }
-        return job;
+        return syncJobRepository.findById(jobId)
+                .orElseThrow(() -> new IllegalStateException("Sync job not found: " + jobId));
     }
 
     private void syncStatusFromJobRunr(SyncJob job) {
@@ -163,7 +172,7 @@ public class SyncJobService {
             SyncJobStatus mappedStatus = mapState(state);
             if (mappedStatus != null && mappedStatus != job.getStatus()) {
                 job.setStatus(mappedStatus);
-                persistJob(job);
+                syncJobRepository.save(job);
             }
         } catch (JobNotFoundException | IllegalArgumentException e) {
             LOG.debugf(e, "Unable to sync JobRunr status for sync job %s", job.getJobId());
@@ -182,66 +191,20 @@ public class SyncJobService {
         };
     }
 
-    private void loadPersistedJobs() {
-        Path jobsDir = jobsDir();
-        if (!Files.exists(jobsDir)) {
-            return;
-        }
-
-        try (var stream = Files.list(jobsDir)) {
-            stream.filter(path -> path.getFileName().toString().endsWith(".json"))
-                    .forEach(path -> {
-                        try {
-                            SyncJob job = objectMapper.readValue(path.toFile(), SyncJob.class);
-                            jobs.put(job.getJobId(), job);
-                        } catch (IOException e) {
-                            throw new IllegalStateException("Failed to read persisted job " + path, e);
-                        }
-                    });
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to read persisted jobs", e);
-        }
-    }
-
-    private void refreshPersistedJobs() {
-        Path jobsDir = jobsDir();
-        if (!Files.exists(jobsDir)) {
-            return;
-        }
-
-        try (var stream = Files.list(jobsDir)) {
-            stream.filter(path -> path.getFileName().toString().endsWith(".json"))
-                    .forEach(path -> {
-                        try {
-                            SyncJob persistedJob = objectMapper.readValue(path.toFile(), SyncJob.class);
-                            jobs.put(persistedJob.getJobId(), persistedJob);
-                        } catch (IOException e) {
-                            throw new IllegalStateException("Failed to refresh persisted job " + path, e);
-                        }
-                    });
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to refresh persisted jobs", e);
-        }
-    }
-
-    private void persistJob(SyncJob job) {
-        try {
-            Files.createDirectories(jobsDir());
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(jobPath(job.getJobId()).toFile(), job);
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to persist job " + job.getJobId(), e);
-        }
-    }
-
-    private Path jobsDir() {
-        return Path.of(dataDir).toAbsolutePath().normalize().resolve("jobs");
-    }
-
-    private Path jobPath(String jobId) {
-        return jobsDir().resolve(jobId + ".json");
-    }
-
     private SyncReport snapshotReport(SyncReport report) {
         return objectMapper.convertValue(report, SyncReport.class);
+    }
+
+    private void archiveReport(String jobId, SyncReport report) {
+        if (!reportStoreEnabled || report == null) {
+            return;
+        }
+        try {
+            String json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(report);
+            String csv = csvReportWriter.write(report);
+            syncReportArchiveRepository.save(jobId, json, csv);
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to archive final report for sync job %s", jobId);
+        }
     }
 }

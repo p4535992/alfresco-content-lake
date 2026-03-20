@@ -68,6 +68,24 @@
     .meta div, .mini-card, .status-box {
       background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px;
     }
+    .summary-grid {
+      display: grid; gap: 12px; grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+    .summary-grid .mini-card strong {
+      display: block; font-size: 1.35rem; margin-top: 8px;
+    }
+    .filter-grid {
+      display: grid; gap: 10px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 14px;
+    }
+    .filter-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; cursor: pointer;
+    }
+    .filter-card strong { display: block; margin-top: 6px; font-size: 1.2rem; }
+    .filter-card.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .filter-card.queued strong { color: var(--warn); }
+    .filter-card.running strong { color: var(--accent); }
+    .filter-card.failed strong { color: var(--err); }
+    .filter-card.completed strong { color: var(--ok); }
     .meta strong { display: block; font-size: 1.05rem; margin-top: 6px; }
     .field-error { min-height: 18px; margin-top: 6px; font-size: 0.82rem; color: var(--err); }
     .helper { margin-top: 6px; font-size: 0.82rem; color: var(--muted); }
@@ -147,6 +165,7 @@
     </div>
     <div class="card">
       <div class="toolbar" style="justify-content: flex-end; margin-bottom: 12px;">
+        <button id="openSettingsButton" class="ghost" type="button">Settings</button>
         <label for="languageSelect" style="margin: 0;">Language</label>
         <select id="languageSelect" style="max-width: 180px;">
           <option value="en">English</option>
@@ -259,6 +278,13 @@
   <section class="split">
     <div class="card">
       <h2>Jobs</h2>
+      <div id="jobFilterGrid" class="filter-grid">
+        <div class="filter-card active" data-filter="all"><span>All</span><strong>0</strong></div>
+        <div class="filter-card queued" data-filter="queued"><span>Queued</span><strong>0</strong></div>
+        <div class="filter-card running" data-filter="running"><span>Running</span><strong>0</strong></div>
+        <div class="filter-card failed" data-filter="failed"><span>Failed</span><strong>0</strong></div>
+        <div class="filter-card completed" data-filter="completed"><span>Succeeded</span><strong>0</strong></div>
+      </div>
       <div id="jobs" class="jobs"></div>
     </div>
     <div class="card">
@@ -270,6 +296,19 @@
       <div id="meta" class="meta"></div>
       <div id="report" class="report">No job selected.</div>
     </div>
+  </section>
+
+  <section class="card">
+    <h2 id="jobrunrSummaryTitle">Job Queue Summary</h2>
+    <div id="jobrunrSummary" class="summary-grid">
+      <div class="mini-card"><span>Enqueued</span><strong>0</strong></div>
+      <div class="mini-card"><span>Processing</span><strong>0</strong></div>
+      <div class="mini-card"><span>Failed</span><strong>0</strong></div>
+      <div class="mini-card"><span>Succeeded</span><strong>0</strong></div>
+      <div class="mini-card"><span>Servers</span><strong>0</strong></div>
+      <div class="mini-card"><span>Total</span><strong>0</strong></div>
+    </div>
+    <div id="jobrunrSummaryHelper" class="helper" style="margin-top: 12px;">Live JobRunr counters from the embedded H2-backed queue.</div>
   </section>
 
   <section class="card">
@@ -285,11 +324,11 @@
         <thead>
         <tr>
           <th>File</th>
-          <th>Operazione</th>
-          <th>Stato</th>
-          <th>Dimensione</th>
+          <th>Operation</th>
+          <th>Status</th>
+          <th>Size</th>
           <th>Node Id</th>
-          <th>Dettaglio</th>
+          <th>Detail</th>
         </tr>
         </thead>
         <tbody id="transferTableBody">
@@ -341,6 +380,7 @@
   const startButton = document.getElementById('startButton');
   const downloadCsvButton = document.getElementById('downloadCsvButton');
   const openDashboardButton = document.getElementById('openDashboardButton');
+  const openSettingsButton = document.getElementById('openSettingsButton');
   const browserListEl = document.getElementById('browserList');
   const browserCurrentEl = document.getElementById('browserCurrent');
   const authTokenEl = document.getElementById('authToken');
@@ -365,6 +405,10 @@
   const languageSelectEl = document.getElementById('languageSelect');
   const transferSectionTitleEl = document.getElementById('transferSectionTitle');
   const transferSectionHelperEl = document.getElementById('transferSectionHelper');
+  const jobrunrSummaryTitleEl = document.getElementById('jobrunrSummaryTitle');
+  const jobrunrSummaryEl = document.getElementById('jobrunrSummary');
+  const jobrunrSummaryHelperEl = document.getElementById('jobrunrSummaryHelper');
+  const jobFilterGridEl = document.getElementById('jobFilterGrid');
   let selectedJobId = null;
   let pollHandle = null;
   let logsPollHandle = null;
@@ -376,6 +420,9 @@
   let selectedLogRaw = null;
   let activeTransferTab = 'transferred';
   let currentSelectedJob = null;
+  let currentJobRunrSummary = null;
+  let currentJobs = [];
+  let activeJobFilter = 'all';
   let currentLocale = localStorage.getItem('syncer.locale') || 'en';
   let runtimeInfo = null;
 
@@ -406,6 +453,21 @@
       csvGenerating: 'Generating CSV download...',
       csvDownloaded: 'CSV downloaded.',
       csvFailed: 'CSV download failed',
+      queueSummaryTitle: 'Job Queue Summary',
+      queueSummaryHelper: 'Live JobRunr counters from the embedded H2-backed queue.',
+      queueEnqueued: 'Enqueued',
+      queueProcessing: 'Processing',
+      queueFailed: 'Failed',
+      queueSucceeded: 'Succeeded',
+      queueServers: 'Servers',
+      queueTotal: 'Total',
+      settings: 'Settings',
+      jobFilterAll: 'All',
+      jobFilterQueued: 'Queued',
+      jobFilterRunning: 'Running',
+      jobFilterFailed: 'Failed',
+      jobFilterCompleted: 'Succeeded',
+      noJobsForFilter: 'No jobs for the selected filter.',
       logsDirectory: 'Directory: {path}',
       logsNoneYet: 'No log files yet',
       logsNoEntries: 'No log entries available.',
@@ -440,6 +502,21 @@
       csvGenerating: 'Generazione download CSV...',
       csvDownloaded: 'CSV scaricato.',
       csvFailed: 'Download CSV fallito',
+      queueSummaryTitle: 'Riepilogo Coda Job',
+      queueSummaryHelper: 'Contatori JobRunr in tempo reale dalla coda embedded basata su H2.',
+      queueEnqueued: 'In coda',
+      queueProcessing: 'In esecuzione',
+      queueFailed: 'Falliti',
+      queueSucceeded: 'Completati',
+      queueServers: 'Server',
+      queueTotal: 'Totale',
+      settings: 'Impostazioni',
+      jobFilterAll: 'Tutti',
+      jobFilterQueued: 'In coda',
+      jobFilterRunning: 'In esecuzione',
+      jobFilterFailed: 'Falliti',
+      jobFilterCompleted: 'Completati',
+      noJobsForFilter: 'Nessun job per il filtro selezionato.',
       logsDirectory: 'Cartella: {path}',
       logsNoneYet: 'Nessun file di log disponibile',
       logsNoEntries: 'Nessuna entry di log disponibile.',
@@ -457,6 +534,7 @@
     currentLocale = languageSelectEl.value || 'en';
     localStorage.setItem('syncer.locale', currentLocale);
     applyLocale();
+    renderJobRunrSummary(currentJobRunrSummary);
     renderTransferTable(currentSelectedJob);
     if (currentSelectedJob) {
       renderJob(currentSelectedJob);
@@ -525,6 +603,10 @@
   function applyLocale() {
     transferSectionTitleEl.textContent = t('transferTitle');
     transferSectionHelperEl.textContent = t('transferHelper');
+    jobrunrSummaryTitleEl.textContent = t('queueSummaryTitle');
+    jobrunrSummaryHelperEl.textContent = t('queueSummaryHelper');
+    openSettingsButton.textContent = t('settings');
+    renderJobFilters(currentJobs);
     if (!verifiedConnection) {
       setConnectionStatus(t('connectionNotVerified'), 'warn');
     }
@@ -716,9 +798,62 @@
     return lines.join('\n');
   }
 
-  function renderJobs(jobs) {
-    jobsEl.innerHTML = '';
+  function jobFilterKey(job) {
+    switch ((job.status || '').toUpperCase()) {
+      case 'QUEUED':
+        return 'queued';
+      case 'RUNNING':
+        return 'running';
+      case 'FAILED':
+        return 'failed';
+      case 'COMPLETED':
+        return 'completed';
+      default:
+        return 'all';
+    }
+  }
+
+  function renderJobFilters(jobs) {
+    const counts = { all: jobs.length, queued: 0, running: 0, failed: 0, completed: 0 };
     jobs.forEach(job => {
+      const key = jobFilterKey(job);
+      if (counts[key] != null) {
+        counts[key] += 1;
+      }
+    });
+
+    const labels = {
+      all: t('jobFilterAll'),
+      queued: t('jobFilterQueued'),
+      running: t('jobFilterRunning'),
+      failed: t('jobFilterFailed'),
+      completed: t('jobFilterCompleted')
+    };
+
+    Array.from(jobFilterGridEl.querySelectorAll('.filter-card')).forEach(card => {
+      const filter = card.dataset.filter;
+      card.classList.toggle('active', filter === activeJobFilter);
+      card.innerHTML = `<span>${escapeHtml(labels[filter] || filter)}</span><strong>${counts[filter] ?? 0}</strong>`;
+    });
+  }
+
+  function filteredJobs(jobs) {
+    if (activeJobFilter === 'all') {
+      return jobs;
+    }
+    return jobs.filter(job => jobFilterKey(job) === activeJobFilter);
+  }
+
+  function renderJobs(jobs) {
+    currentJobs = jobs || [];
+    renderJobFilters(currentJobs);
+    jobsEl.innerHTML = '';
+    const visibleJobs = filteredJobs(currentJobs);
+    if (!visibleJobs.length) {
+      jobsEl.innerHTML = `<div class="mini-card">${escapeHtml(t('noJobsForFilter'))}</div>`;
+      return;
+    }
+    visibleJobs.forEach(job => {
       const div = document.createElement('div');
       div.className = `job ${job.jobId === selectedJobId ? 'active' : ''}`;
       const report = job.report || {};
@@ -726,7 +861,7 @@
       div.onclick = () => {
         selectedJobId = job.jobId;
         loadJob(job.jobId);
-        renderJobs(jobs);
+        renderJobs(currentJobs);
       };
       jobsEl.appendChild(div);
     });
@@ -867,6 +1002,19 @@
     });
   }
 
+  function renderJobRunrSummary(summary) {
+    currentJobRunrSummary = summary || null;
+    const payload = currentJobRunrSummary || {};
+    jobrunrSummaryEl.innerHTML = `
+      <div class="mini-card"><span>${escapeHtml(t('queueEnqueued'))}</span><strong>${payload.enqueued ?? 0}</strong></div>
+      <div class="mini-card"><span>${escapeHtml(t('queueProcessing'))}</span><strong>${payload.processing ?? 0}</strong></div>
+      <div class="mini-card"><span>${escapeHtml(t('queueFailed'))}</span><strong>${payload.failed ?? 0}</strong></div>
+      <div class="mini-card"><span>${escapeHtml(t('queueSucceeded'))}</span><strong>${payload.succeeded ?? 0}</strong></div>
+      <div class="mini-card"><span>${escapeHtml(t('queueServers'))}</span><strong>${payload.backgroundJobServers ?? 0}</strong></div>
+      <div class="mini-card"><span>${escapeHtml(t('queueTotal'))}</span><strong>${payload.total ?? 0}</strong></div>
+    `;
+  }
+
   function currentBrowsePath() {
     return browseStack.map(item => item.name).join(' / ') || '-';
   }
@@ -976,6 +1124,12 @@
     openDashboardButton.disabled = !runtimeInfo.jobRunrDashboardUrl;
   }
 
+  async function loadJobRunrSummary() {
+    const response = await apiFetch('/api/sync/jobrunr/summary');
+    const summary = await response.json();
+    renderJobRunrSummary(summary);
+  }
+
   function ensureLogsPolling() {
     if (logsPollHandle) {
       clearInterval(logsPollHandle);
@@ -993,6 +1147,7 @@
     const response = await apiFetch('/api/sync/jobs');
     const jobs = await response.json();
     renderJobs(jobs);
+    await loadJobRunrSummary();
     if (!selectedJobId && jobs.length) {
       selectedJobId = jobs[0].jobId;
       await loadJob(selectedJobId);
@@ -1233,6 +1388,11 @@
     window.open(runtimeInfo.jobRunrDashboardUrl, '_blank');
   });
 
+  openSettingsButton.addEventListener('click', () => {
+    const settingsUrl = runtimeInfo && runtimeInfo.settingsUrl ? runtimeInfo.settingsUrl : '/settings.html';
+    window.open(settingsUrl, '_blank');
+  });
+
   logFileSelectEl.addEventListener('change', async () => {
     try {
       selectedLogRaw = null;
@@ -1243,6 +1403,12 @@
   });
 
   autoRefreshLogsEl.addEventListener('change', () => ensureLogsPolling());
+  Array.from(jobFilterGridEl.querySelectorAll('.filter-card')).forEach(card => {
+    card.addEventListener('click', () => {
+      activeJobFilter = card.dataset.filter || 'all';
+      renderJobs(currentJobs);
+    });
+  });
   tabTransferredEl.addEventListener('click', () => {
     activeTransferTab = 'transferred';
     renderTransferTable(currentSelectedJob);
@@ -1257,6 +1423,7 @@
   });
 
   applyLocale();
+  renderJobRunrSummary(null);
   loadJobs().catch(err => setMessage(err.message, 'err'));
   loadLogs().catch(err => setMessage(err.message, 'err'));
   loadRuntimeInfo().catch(err => setMessage(err.message, 'err'));

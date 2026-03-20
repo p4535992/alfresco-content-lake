@@ -3,6 +3,7 @@ package org.alfresco.contentlake.syncer.service;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -24,10 +25,14 @@ public class RuntimeDirectoryInitializer {
     @ConfigProperty(name = "syncer.jobrunr.data-dir")
     String jobrunrDataDir;
 
+    @Inject
+    RuntimeSettingsService runtimeSettingsService;
+
     void onStart(@Observes StartupEvent ignored) {
         createDirectory(logsDir);
         createDirectory(dataDir);
         createDirectory(jobrunrDataDir);
+        createDirectory(runtimeSettingsService.configDirectoryPath().toString());
     }
 
     private void createDirectory(String directory) {

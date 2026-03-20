@@ -339,6 +339,9 @@ Default behavior:
 - writes CSV when `reportOutput` ends with `.csv`; otherwise writes JSON plus a companion `.csv`
 - does not delete remote nodes unless explicitly enabled
 - runs entirely inside the local Quarkus process with no extra queueing services
+- persists JobRunr queue data and sync job metadata in embedded H2 under `data/`
+- archives final JSON/CSV reports in embedded H2 when `syncer.report-store.enabled=true`
+- exposes the embedded JobRunr dashboard on `http://127.0.0.1:8000/`
 
 Run it:
 
@@ -365,6 +368,8 @@ UI:
 ```bash
 # open in browser
 http://localhost:9093
+# settings page
+http://localhost:9093/settings.html
 ```
 
 API example:
@@ -389,8 +394,25 @@ Job status:
 ```bash
 curl http://localhost:9093/api/sync/jobs
 curl http://localhost:9093/api/sync/jobs/{jobId}
+curl http://localhost:9093/api/sync/jobrunr/summary
+curl -OJ http://localhost:9093/api/sync/jobs/{jobId}/report.json
 curl -OJ http://localhost:9093/api/sync/jobs/{jobId}/report.csv
 ```
+
+Runtime settings:
+
+```bash
+curl http://localhost:9093/api/system/settings
+curl -X POST http://localhost:9093/api/system/settings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "httpPort": 9093,
+    "openBrowserOnStartup": true,
+    "dataStorageRoot": "D:/alfresco-syncer-data"
+  }'
+```
+
+Settings are written to an external override file under `config/application.properties` and take effect after restart.
 
 Browse remote folders:
 

@@ -4,9 +4,12 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.inject.Inject;
+import org.alfresco.contentlake.syncer.service.RuntimeSettingsService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.swing.JFileChooser;
@@ -17,7 +20,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Path("/api/system")
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public class DesktopResource {
+
+    @Inject
+    RuntimeSettingsService runtimeSettingsService;
 
     @ConfigProperty(name = "syncer.ui.startup-host", defaultValue = "127.0.0.1")
     String startupHost;
@@ -36,8 +43,27 @@ public class DesktopResource {
     public RuntimeInfoResponse runtimeInfo() {
         return new RuntimeInfoResponse(
                 "http://" + startupHost + ":" + httpPort + "/",
-                "http://" + dashboardHost + ":" + dashboardPort + "/"
+                "http://" + dashboardHost + ":" + dashboardPort + "/",
+                "http://" + startupHost + ":" + httpPort + "/settings.html"
         );
+    }
+
+    @GET
+    @Path("/settings")
+    public RuntimeSettingsResponse settings() {
+        return runtimeSettingsService.load();
+    }
+
+    @POST
+    @Path("/settings")
+    public RuntimeSettingsResponse saveSettings(UpdateRuntimeSettingsRequest request) {
+        try {
+            return runtimeSettingsService.save(request);
+        } catch (IllegalArgumentException e) {
+            throw new WebApplicationException(e.getMessage(), Response.Status.BAD_REQUEST);
+        } catch (IllegalStateException e) {
+            throw new WebApplicationException(e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @POST

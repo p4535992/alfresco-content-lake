@@ -68,6 +68,22 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -86,6 +102,14 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -131,8 +155,12 @@
                                             <arg value="Alfresco"/>
                                             <arg value="--java-options"/>
                                             <arg value="-Dsyncer.runtime.root=$ROOTDIR"/>
+                                            <arg value="--java-options"/>
+                                            <arg value="-Dquarkus.config.locations=$ROOTDIR/config/application.properties"/>
                                             <arg value="--win-console"/>
                                         </exec>
+                                        <mkdir dir="${project.basedir}/dist/windows/AlfrescoContentSyncer/config"/>
+                                        <touch file="${project.basedir}/dist/windows/AlfrescoContentSyncer/config/application.properties"/>
                                     </target>
                                 </configuration>
                             </execution>

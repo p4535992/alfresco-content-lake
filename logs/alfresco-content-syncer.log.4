@@ -1,0 +1,62 @@
+2026-03-19 23:26:35,657 INFO  [or.al.co.sy.se.StartupBrowserLauncher] (main) Browser auto-open on startup is disabled
+2026-03-19 23:26:36,275 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v000__create_migrations_table.sql}
+2026-03-19 23:26:36,302 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v001__create_job_table.sql}
+2026-03-19 23:26:36,306 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v002__create_recurring_job_table.sql}
+2026-03-19 23:26:36,307 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v003__create_background_job_server_table.sql}
+2026-03-19 23:26:36,309 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v004__create_job_stats_view.sql}
+2026-03-19 23:26:36,322 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v005__update_job_stats_view.sql}
+2026-03-19 23:26:36,325 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v006__alter_table_jobs_add_recurringjob.sql}
+2026-03-19 23:26:36,341 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v007__alter_table_backgroundjobserver_add_delete_config.sql}
+2026-03-19 23:26:36,350 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v008__alter_table_jobs_increase_jobAsJson_size.sql}
+2026-03-19 23:26:36,352 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/h2/migrations/v009__change_jobrunr_job_counters_to_jobrunr_metadata.sql}
+2026-03-19 23:26:36,357 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/h2/migrations/v010__change_job_stats.sql}
+2026-03-19 23:26:36,358 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v011__change_sqlserver_text_to_varchar.sql}
+2026-03-19 23:26:36,359 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v012__change_oracle_alter_jobrunr_metadata_column_size.sql}
+2026-03-19 23:26:36,361 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v013__alter_table_recurring_job_add_createdAt.sql}
+2026-03-19 23:26:36,364 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v014__improve_job_stats.sql}
+2026-03-19 23:26:36,365 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/common/migrations/v015__alter_table_backgroundjobserver_add_name.sql}
+2026-03-19 23:26:36,368 INFO  [or.jo.st.sq.co.DatabaseCreator] (main) Running migration MigrationByPath{path=/org/jobrunr/storage/sql/h2/migrations/v016__alter_jobs_stats_add_awaiting_jobs.sql}
+2026-03-19 23:26:36,380 INFO  [or.jo.se.th.VirtualThreadJobRunrExecutor] (main) ThreadManager of type 'VirtualThreadPerTask' started
+2026-03-19 23:26:36,395 INFO  [or.jo.da.JobRunrDashboardWebServer] (main) JobRunr Dashboard using H2StorageProvider started at http://localhost:8000/dashboard
+2026-03-19 23:26:36,504 INFO  [io.quarkus] (main) alfresco-content-syncer 1.0.0-SNAPSHOT on JVM (powered by Quarkus 3.31.3) started in 1.612s. Listening on: http://0.0.0.0:9093
+2026-03-19 23:26:36,505 INFO  [io.quarkus] (main) Profile prod activated. 
+2026-03-19 23:26:36,505 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, jdbc-h2, jobrunr, narayana-jta, rest, rest-jackson, smallrye-context-propagation, smallrye-health, vertx]
+2026-03-19 23:26:40,171 INFO  [or.jo.se.BackgroundJobServer] (backgroundjob-zookeeper-pool-0) JobRunr BackgroundJobServer (DESKTOP-OUI6VFO - 2091a2a8-7905-49c5-a46f-9c756f617df4) using H2StorageProvider and 2 BackgroundJobPerformers started successfully
+2026-03-19 23:26:40,178 INFO  [or.jo.se.ServerZooKeeper] (backgroundjob-zookeeper-pool-0) Server 2091a2a8-7905-49c5-a46f-9c756f617df4 is master (this BackgroundJobServer)
+2026-03-19 23:26:40,183 ERROR [or.jo.se.BackgroundJobServer] (pool-8-thread-1) Unexpected exception running `CheckIfAllJobsExistTask`: org.jobrunr.JobRunrException: JobRunr encountered a problematic exception. Please create a bug report (if possible, provide the code to reproduce this and the stacktrace)
+	at org.jobrunr.JobRunrException.shouldNotHappenException(JobRunrException.java:43)
+	at org.jobrunr.server.tasks.startup.CheckIfAllJobsExistTask.run(CheckIfAllJobsExistTask.java:51)
+	at java.base/java.util.Arrays$ArrayList.forEach(Arrays.java:4305)
+	at org.jobrunr.server.tasks.startup.StartupTask.run(StartupTask.java:16)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: java.lang.NullPointerException
+	at java.base/java.util.Objects.requireNonNull(Objects.java:233)
+	at org.jobrunr.storage.sql.common.RecurringJobTable.<init>(RecurringJobTable.java:26)
+	at org.jobrunr.storage.sql.common.DefaultSqlStorageProvider.recurringJobTable(DefaultSqlStorageProvider.java:422)
+	at org.jobrunr.storage.sql.common.DefaultSqlStorageProvider.getRecurringJobs(DefaultSqlStorageProvider.java:367)
+	at org.jobrunr.storage.JobRunrStorageProducer_ProducerMethod_storageProvider_AzPwPsSq_uH1ZJvbHnoz3VxV3Cs_ClientProxy.getRecurringJobs(Unknown Source)
+	at org.jobrunr.storage.ThreadSafeStorageProvider.getRecurringJobs(ThreadSafeStorageProvider.java:188)
+	at org.jobrunr.server.tasks.startup.CheckIfAllJobsExistTask.getDistinctRecurringJobSignaturesThatDoNotExistAnymore(CheckIfAllJobsExistTask.java:57)
+	at org.jobrunr.server.tasks.startup.CheckIfAllJobsExistTask.run(CheckIfAllJobsExistTask.java:35)
+	... 5 more
+
+2026-03-19 23:26:40,186 INFO  [or.jo.se.ta.st.MigrateFromV5toV6Task] (pool-8-thread-1) Start migration of scheduled jobs from v5 to v6
+2026-03-19 23:26:40,192 ERROR [or.jo.se.ta.st.MigrateFromV5toV6Task] (pool-8-thread-1) Error migrating scheduled jobs from v5 to v6.: java.lang.NullPointerException
+	at java.base/java.util.Objects.requireNonNull(Objects.java:233)
+	at org.jobrunr.storage.sql.common.JobTable.<init>(JobTable.java:62)
+	at org.jobrunr.storage.sql.common.DefaultSqlStorageProvider.jobTable(DefaultSqlStorageProvider.java:418)
+	at org.jobrunr.storage.sql.common.DefaultSqlStorageProvider.countJobs(DefaultSqlStorageProvider.java:244)
+	at org.jobrunr.storage.JobRunrStorageProducer_ProducerMethod_storageProvider_AzPwPsSq_uH1ZJvbHnoz3VxV3Cs_ClientProxy.countJobs(Unknown Source)
+	at org.jobrunr.storage.ThreadSafeStorageProvider.countJobs(ThreadSafeStorageProvider.java:138)
+	at org.jobrunr.storage.StorageProvider.getScheduledJobs(StorageProvider.java:192)
+	at org.jobrunr.server.tasks.startup.MigrateFromV5toV6Task.getScheduledJobIdsToMigrate(MigrateFromV5toV6Task.java:77)
+	at org.jobrunr.server.tasks.startup.MigrateFromV5toV6Task.migrateScheduledJobsIfNecessary(MigrateFromV5toV6Task.java:49)
+	at org.jobrunr.server.tasks.startup.MigrateFromV5toV6Task.run(MigrateFromV5toV6Task.java:36)
+	at java.base/java.util.Arrays$ArrayList.forEach(Arrays.java:4305)
+	at org.jobrunr.server.tasks.startup.StartupTask.run(StartupTask.java:16)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+

@@ -40,3 +40,7 @@ Note:
 - `target\` contiene solo artefatti di build temporanei
 - `mvn clean` non rimuove l'app sotto `dist\windows`
 - il comando Maven rigenera `dist\windows\AlfrescoContentSyncer` sovrascrivendo la build precedente
+- i dati embedded di JobRunr/H2 vengono salvati in `AlfrescoContentSyncer\data\`
+- i log ruotano in `AlfrescoContentSyncer\logs\`
+- gli override runtime della pagina `Settings` vengono salvati in `AlfrescoContentSyncer\config\application.properties`
+- i report finali JSON/CSV possono essere esportati via API/UI e sono anche archiviati in H2 se `syncer.report-store.enabled=true`
