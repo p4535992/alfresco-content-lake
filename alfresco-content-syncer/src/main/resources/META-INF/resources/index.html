@@ -291,6 +291,7 @@
       <h2>Selected Job</h2>
       <div class="toolbar">
         <button id="downloadCsvButton" class="ghost" disabled>Download CSV</button>
+        <button id="downloadJsonButton" class="ghost" disabled>Download JSON</button>
         <button id="openDashboardButton" class="ghost" type="button">Open JobRunr Dashboard</button>
       </div>
       <div id="meta" class="meta"></div>
@@ -379,6 +380,7 @@
   const messageEl = document.getElementById('message');
   const startButton = document.getElementById('startButton');
   const downloadCsvButton = document.getElementById('downloadCsvButton');
+  const downloadJsonButton = document.getElementById('downloadJsonButton');
   const openDashboardButton = document.getElementById('openDashboardButton');
   const openSettingsButton = document.getElementById('openSettingsButton');
   const browserListEl = document.getElementById('browserList');
@@ -453,6 +455,9 @@
       csvGenerating: 'Generating CSV download...',
       csvDownloaded: 'CSV downloaded.',
       csvFailed: 'CSV download failed',
+      jsonGenerating: 'Generating JSON download...',
+      jsonDownloaded: 'JSON downloaded.',
+      jsonFailed: 'JSON download failed',
       queueSummaryTitle: 'Job Queue Summary',
       queueSummaryHelper: 'Live JobRunr counters from the embedded H2-backed queue.',
       queueEnqueued: 'Enqueued',
@@ -502,6 +507,9 @@
       csvGenerating: 'Generazione download CSV...',
       csvDownloaded: 'CSV scaricato.',
       csvFailed: 'Download CSV fallito',
+      jsonGenerating: 'Generazione download JSON...',
+      jsonDownloaded: 'JSON scaricato.',
+      jsonFailed: 'Download JSON fallito',
       queueSummaryTitle: 'Riepilogo Coda Job',
       queueSummaryHelper: 'Contatori JobRunr in tempo reale dalla coda embedded basata su H2.',
       queueEnqueued: 'In coda',
@@ -872,6 +880,7 @@
       metaEl.innerHTML = '';
       reportEl.textContent = 'No job selected.';
       downloadCsvButton.disabled = true;
+      downloadJsonButton.disabled = true;
       currentSelectedJob = null;
       renderTransferTable(null);
       return;
@@ -895,6 +904,7 @@
     `;
 
     downloadCsvButton.disabled = !job.report;
+    downloadJsonButton.disabled = !job.report;
     reportEl.textContent = renderReportText(job);
     renderTransferTable(job);
   }
@@ -1273,6 +1283,19 @@
     URL.revokeObjectURL(url);
   }
 
+  async function downloadJson(jobId) {
+    const response = await apiFetch(`/api/sync/jobs/${jobId}/report.json`);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${jobId}-report.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   document.getElementById('verifyConnectionButton').addEventListener('click', async () => {
     try {
       await verifyConnection();
@@ -1369,6 +1392,20 @@
       setMessage(t('csvDownloaded'), 'ok');
     } catch (error) {
       setMessage(error.message || t('csvFailed'), 'err');
+    }
+  });
+
+  downloadJsonButton.addEventListener('click', async () => {
+    if (!selectedJobId) {
+      setMessage('Select a job first.', 'warn');
+      return;
+    }
+    try {
+      setMessage(t('jsonGenerating'), 'warn');
+      await downloadJson(selectedJobId);
+      setMessage(t('jsonDownloaded'), 'ok');
+    } catch (error) {
+      setMessage(error.message || t('jsonFailed'), 'err');
     }
   });
 
