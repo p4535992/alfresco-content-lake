@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.model;
+package org.alfresco.contentlake.syncer.entity;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,4 +15,5 @@ public class SyncState {
         this.entries = entries;
     }
 }
+
 

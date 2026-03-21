@@ -3,6 +3,7 @@ package org.alfresco.contentlake.syncer.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -13,11 +14,13 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.alfresco.contentlake.syncer.job.SyncJobService;
 import org.alfresco.contentlake.syncer.job.SyncReportArchiveRepository;
-import org.alfresco.contentlake.syncer.model.SyncJob;
+import org.alfresco.contentlake.syncer.entity.SyncJob;
 import org.alfresco.contentlake.syncer.model.api.JobRunrSummaryResponseDTO;
 import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
+import org.alfresco.contentlake.syncer.model.api.SyncStateViewDTO;
 import org.alfresco.contentlake.syncer.model.api.SyncReportHistoryEntryDTO;
 import org.alfresco.contentlake.syncer.report.CsvReportWriter;
+import org.alfresco.contentlake.syncer.service.SyncStateStore;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -39,6 +42,9 @@ public class SyncResource {
 
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    SyncStateStore syncStateStore;
 
     @GET
     @Path("/jobs")
@@ -80,6 +86,25 @@ public class SyncResource {
                         job.getCompletedAt()
                 ))
                 .toList();
+    }
+
+    @GET
+    @Path("/state/{remoteRootNodeId}")
+    public SyncStateViewDTO getTrackedState(@PathParam("remoteRootNodeId") String remoteRootNodeId) {
+        if (remoteRootNodeId == null || remoteRootNodeId.isBlank()) {
+            throw new WebApplicationException("remoteRootNodeId is required", Response.Status.BAD_REQUEST);
+        }
+        return syncStateStore.view(remoteRootNodeId);
+    }
+
+    @DELETE
+    @Path("/state/{remoteRootNodeId}")
+    public Response clearTrackedState(@PathParam("remoteRootNodeId") String remoteRootNodeId) {
+        if (remoteRootNodeId == null || remoteRootNodeId.isBlank()) {
+            throw new WebApplicationException("remoteRootNodeId is required", Response.Status.BAD_REQUEST);
+        }
+        syncStateStore.clear(remoteRootNodeId);
+        return Response.noContent().build();
     }
 
     @GET
@@ -141,4 +166,5 @@ public class SyncResource {
         }
     }
 }
+
 

@@ -27,3 +27,4 @@ public class SyncJobRunRequestDTO implements JobRequest {
         return SyncJobRunRequestHandler.class;
     }
 }
+

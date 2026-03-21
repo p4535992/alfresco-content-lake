@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.model.SyncState;
+import org.alfresco.contentlake.syncer.entity.SyncState;
+import org.alfresco.contentlake.syncer.entity.SyncStateEntry;
+import org.alfresco.contentlake.syncer.model.api.SyncStateEntryDTO;
+import org.alfresco.contentlake.syncer.model.api.SyncStateViewDTO;
 import org.jboss.logging.Logger;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -15,6 +18,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Comparator;
+import java.util.List;
 
 import javax.sql.DataSource;
 
@@ -71,6 +76,33 @@ public class SyncStateStore {
         }
     }
 
+    public SyncStateViewDTO view(String remoteRootNodeId) {
+        SyncState state = load(remoteRootNodeId);
+        List<SyncStateEntryDTO> entries = state.getEntries().values().stream()
+                .sorted(Comparator.comparing(SyncStateEntry::getRelativePath, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .map(entry -> new SyncStateEntryDTO(
+                        entry.getRelativePath(),
+                        entry.getRemoteNodeId(),
+                        entry.getSizeInBytes(),
+                        entry.getSha256(),
+                        entry.getRemoteModifiedAt(),
+                        entry.getLastTransferredAt()
+                ))
+                .toList();
+        return new SyncStateViewDTO(remoteRootNodeId, entries.size(), entries);
+    }
+
+    public void clear(String remoteRootNodeId) {
+        String sql = "DELETE FROM sync_state WHERE remote_root_node_id = ?";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, remoteRootNodeId);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to clear sync state for " + remoteRootNodeId, e);
+        }
+    }
+
     private void createTableIfMissing() {
         String sql = """
                 CREATE TABLE IF NOT EXISTS sync_state (
@@ -110,4 +142,5 @@ public class SyncStateStore {
         }
     }
 }
+
 

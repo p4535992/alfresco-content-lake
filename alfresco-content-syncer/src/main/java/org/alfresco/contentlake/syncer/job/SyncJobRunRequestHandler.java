@@ -2,7 +2,7 @@ package org.alfresco.contentlake.syncer.job;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.model.SyncReport;
+import org.alfresco.contentlake.syncer.entity.SyncReport;
 import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.alfresco.contentlake.syncer.model.job.SyncJobRunRequestDTO;
 import org.alfresco.contentlake.syncer.service.LocalFolderSyncService;
@@ -43,4 +43,5 @@ public class SyncJobRunRequestHandler implements JobRequestHandler<SyncJobRunReq
         }
     }
 }
+
 

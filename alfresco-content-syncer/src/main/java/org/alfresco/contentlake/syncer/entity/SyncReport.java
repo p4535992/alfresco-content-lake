@@ -1,4 +1,7 @@
-package org.alfresco.contentlake.syncer.model;
+package org.alfresco.contentlake.syncer.entity;
+
+import org.alfresco.contentlake.syncer.model.SyncFailureDTO;
+import org.alfresco.contentlake.syncer.model.SyncItemResultDTO;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -231,4 +234,5 @@ public class SyncReport {
         completedAt = Instant.now();
     }
 }
+
 

@@ -2,7 +2,7 @@ package org.alfresco.contentlake.syncer.report;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.alfresco.contentlake.syncer.model.SyncItemResultDTO;
-import org.alfresco.contentlake.syncer.model.SyncReport;
+import org.alfresco.contentlake.syncer.entity.SyncReport;
 
 @ApplicationScoped
 public class CsvReportWriter {
@@ -59,4 +59,5 @@ public class CsvReportWriter {
         return '"' + value.replace("\"", "\"\"") + '"';
     }
 }
+
 

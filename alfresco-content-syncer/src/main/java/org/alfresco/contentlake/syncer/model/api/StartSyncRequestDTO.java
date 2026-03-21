@@ -1,5 +1,7 @@
 package org.alfresco.contentlake.syncer.model.api;
 
+import org.alfresco.contentlake.syncer.model.SyncVersionType;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -10,6 +12,7 @@ public class StartSyncRequestDTO extends AlfrescoConnectionPayloadDTO {
     public boolean dryRun;
     public boolean deleteRemoteMissing;
     public boolean forceNewVersion;
+    public SyncVersionType forceVersionType = SyncVersionType.defaultValue();
     public String reportOutput;
 
     public void validate() {
@@ -25,6 +28,9 @@ public class StartSyncRequestDTO extends AlfrescoConnectionPayloadDTO {
         }
         if (isBlank(remoteRootNodeId)) {
             throw new IllegalArgumentException("remoteRootNodeId is required");
+        }
+        if (forceVersionType == null) {
+            forceVersionType = SyncVersionType.defaultValue();
         }
         validateConnection();
     }
@@ -48,6 +54,11 @@ public class StartSyncRequestDTO extends AlfrescoConnectionPayloadDTO {
                 .resolve("alfresco-content-sync-report-" + jobId + ".csv")
                 .toString();
     }
+
+    public SyncVersionType resolvedForceVersionType() {
+        return forceVersionType != null ? forceVersionType : SyncVersionType.defaultValue();
+    }
 }
+
 
 

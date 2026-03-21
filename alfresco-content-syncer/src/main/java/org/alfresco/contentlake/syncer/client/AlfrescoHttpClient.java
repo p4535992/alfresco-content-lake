@@ -186,13 +186,23 @@ public class AlfrescoHttpClient {
     }
 
     public RemoteNodeDTO updateFileContent(AlfrescoConnectionRequest request, String nodeId, Path file) {
-        return updateFileContent(request, nodeId, file, null);
+        return updateFileContent(request, nodeId, file, false, null);
     }
 
     public RemoteNodeDTO updateFileContent(AlfrescoConnectionRequest request, String nodeId, Path file, String versionComment) {
+        return updateFileContent(request, nodeId, file, false, versionComment);
+    }
+
+    public RemoteNodeDTO updateFileContent(
+            AlfrescoConnectionRequest request,
+            String nodeId,
+            Path file,
+            boolean majorVersion,
+            String versionComment
+    ) {
         return withRetry(() -> {
             try {
-                String query = "/nodes/" + encode(nodeId) + "/content?majorVersion=false";
+                String query = "/nodes/" + encode(nodeId) + "/content?majorVersion=" + majorVersion;
                 if (versionComment != null && !versionComment.isBlank()) {
                     query += "&comment=" + encode(versionComment);
                 }
@@ -422,4 +432,5 @@ public class AlfrescoHttpClient {
         T get();
     }
 }
+
 

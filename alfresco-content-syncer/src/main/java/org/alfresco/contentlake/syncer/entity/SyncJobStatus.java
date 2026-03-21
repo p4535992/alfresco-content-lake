@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.model;
+package org.alfresco.contentlake.syncer.entity;
 
 public enum SyncJobStatus {
     QUEUED,
@@ -6,4 +6,5 @@ public enum SyncJobStatus {
     COMPLETED,
     FAILED
 }
+
 

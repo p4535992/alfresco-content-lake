@@ -1,5 +1,6 @@
 package org.alfresco.contentlake.syncer.api;
 
+import org.alfresco.contentlake.syncer.model.SyncVersionType;
 import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.junit.jupiter.api.Test;
 
@@ -7,6 +8,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class StartSyncRequestTest {
 
@@ -31,5 +33,13 @@ class StartSyncRequestTest {
         assertTrue(request.reportOutput.endsWith("alfresco-content-sync-report-job-123.csv"));
         assertTrue(Path.of(request.reportOutput).isAbsolute());
     }
+
+    @Test
+    void defaultsForceVersionTypeToMinor() {
+        StartSyncRequestDTO request = new StartSyncRequestDTO();
+
+        assertEquals(SyncVersionType.MINOR, request.resolvedForceVersionType());
+    }
 }
+
 

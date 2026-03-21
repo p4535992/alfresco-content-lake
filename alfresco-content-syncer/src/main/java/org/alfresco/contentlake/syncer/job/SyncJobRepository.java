@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.model.SyncJob;
+import org.alfresco.contentlake.syncer.entity.SyncJob;
 import org.jboss.logging.Logger;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -180,4 +180,5 @@ public class SyncJobRepository {
         return instant != null ? Timestamp.from(instant) : null;
     }
 }
+
 

@@ -5,10 +5,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.alfresco.contentlake.syncer.client.AlfrescoHttpClient;
+import org.alfresco.contentlake.syncer.model.SyncVersionType;
 import org.alfresco.contentlake.syncer.model.RemoteNodeDTO;
-import org.alfresco.contentlake.syncer.model.SyncReport;
-import org.alfresco.contentlake.syncer.model.SyncState;
-import org.alfresco.contentlake.syncer.model.SyncStateEntry;
+import org.alfresco.contentlake.syncer.entity.SyncReport;
+import org.alfresco.contentlake.syncer.entity.SyncState;
+import org.alfresco.contentlake.syncer.entity.SyncStateEntry;
 import org.alfresco.contentlake.syncer.report.CsvReportWriter;
 import org.jboss.logging.Logger;
 
@@ -56,12 +57,13 @@ public class LocalFolderSyncService {
     public SyncReport sync(StartSyncRequestDTO request, Consumer<SyncReport> progressListener) throws IOException {
         request.validate();
         LOG.infof(
-                "Starting folder sync localRoot=%s remoteRoot=%s dryRun=%s deleteRemoteMissing=%s forceNewVersion=%s",
+                "Starting folder sync localRoot=%s remoteRoot=%s dryRun=%s deleteRemoteMissing=%s forceNewVersion=%s forceVersionType=%s",
                 request.localRootPath(),
                 request.remoteRootNodeId,
                 request.dryRun,
                 request.deleteRemoteMissing,
-                request.forceNewVersion
+                request.forceNewVersion,
+                request.resolvedForceVersionType()
         );
 
         Path localRoot = request.localRootPath();
@@ -266,14 +268,21 @@ public class LocalFolderSyncService {
                 publishProgress(progressListener, report);
                 report.recordUpdate(fileSize);
                 if (!request.dryRun) {
-                    RemoteNodeDTO updated = alfrescoHttpClient.updateFileContent(request, remoteNode.id(), file, FORCED_VERSION_COMMENT);
+                    SyncVersionType forceVersionType = request.resolvedForceVersionType();
+                    RemoteNodeDTO updated = alfrescoHttpClient.updateFileContent(
+                            request,
+                            remoteNode.id(),
+                            file,
+                            forceVersionType.isMajor(),
+                            forcedVersionComment(forceVersionType)
+                    );
                     childrenCache.computeIfAbsent(remoteParentId, ignored -> new LinkedHashMap<>()).put(fileName, updated);
                     storeState(syncState, checksumCache, relativePath, file, updated);
-                    report.recordItem(relativePath, "update-file", "UPDATED", fileSize, updated.id(), "Forced new version");
-                    LOG.infof("Forced new version for file relativePath=%s size=%d nodeId=%s", relativePath, fileSize, updated.id());
+                    report.recordItem(relativePath, "update-file", "UPDATED", fileSize, updated.id(), "Forced " + forceVersionType + " version");
+                    LOG.infof("Forced %s version for file relativePath=%s size=%d nodeId=%s", forceVersionType, relativePath, fileSize, updated.id());
                 } else {
-                    report.recordItem(relativePath, "update-file", "DRY_RUN", fileSize, remoteNode.id(), "Would force a new version");
-                    LOG.infof("Dry run forced version relativePath=%s size=%d nodeId=%s", relativePath, fileSize, remoteNode.id());
+                    report.recordItem(relativePath, "update-file", "DRY_RUN", fileSize, remoteNode.id(), "Would force " + request.resolvedForceVersionType() + " version");
+                    LOG.infof("Dry run forced %s version relativePath=%s size=%d nodeId=%s", request.resolvedForceVersionType(), relativePath, fileSize, remoteNode.id());
                 }
                 publishProgress(progressListener, report);
             } else if (alreadyTransferredSuccessfully(file, remoteNode, stateEntry, checksumCache, relativePath)) {
@@ -310,7 +319,8 @@ public class LocalFolderSyncService {
                             remoteNode.id(),
                             fileSize,
                             checksum,
-                            remoteNode.modifiedAt()
+                            remoteNode.modifiedAt(),
+                            Instant.now()
                     ));
                 }
                 publishProgress(progressListener, report);
@@ -455,7 +465,8 @@ public class LocalFolderSyncService {
                 remoteNode.id(),
                 remoteNode.sizeInBytes(),
                 checksum,
-                remoteNode.modifiedAt()
+                remoteNode.modifiedAt(),
+                Instant.now()
         ));
     }
 
@@ -485,6 +496,12 @@ public class LocalFolderSyncService {
 
     boolean shouldForceNewVersion(StartSyncRequestDTO request, RemoteNodeDTO remoteNode) {
         return request.forceNewVersion && remoteNode != null && remoteNode.file();
+    }
+
+    private String forcedVersionComment(SyncVersionType forceVersionType) {
+        return forceVersionType == SyncVersionType.MAJOR
+                ? FORCED_VERSION_COMMENT + " (major)"
+                : FORCED_VERSION_COMMENT + " (minor)";
     }
 
     private void removeStatePrefix(SyncState syncState, String relativePath) {
@@ -536,4 +553,5 @@ public class LocalFolderSyncService {
         return ignoredPaths.contains(normalized);
     }
 }
+
 

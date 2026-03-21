@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.model;
+package org.alfresco.contentlake.syncer.entity;
 
 import java.time.Instant;
 
@@ -9,16 +9,18 @@ public class SyncStateEntry {
     private long sizeInBytes;
     private String sha256;
     private Instant remoteModifiedAt;
+    private Instant lastTransferredAt;
 
     public SyncStateEntry() {
     }
 
-    public SyncStateEntry(String relativePath, String remoteNodeId, long sizeInBytes, String sha256, Instant remoteModifiedAt) {
+    public SyncStateEntry(String relativePath, String remoteNodeId, long sizeInBytes, String sha256, Instant remoteModifiedAt, Instant lastTransferredAt) {
         this.relativePath = relativePath;
         this.remoteNodeId = remoteNodeId;
         this.sizeInBytes = sizeInBytes;
         this.sha256 = sha256;
         this.remoteModifiedAt = remoteModifiedAt;
+        this.lastTransferredAt = lastTransferredAt;
     }
 
     public String getRelativePath() {
@@ -60,5 +62,14 @@ public class SyncStateEntry {
     public void setRemoteModifiedAt(Instant remoteModifiedAt) {
         this.remoteModifiedAt = remoteModifiedAt;
     }
+
+    public Instant getLastTransferredAt() {
+        return lastTransferredAt;
+    }
+
+    public void setLastTransferredAt(Instant lastTransferredAt) {
+        this.lastTransferredAt = lastTransferredAt;
+    }
 }
+
 

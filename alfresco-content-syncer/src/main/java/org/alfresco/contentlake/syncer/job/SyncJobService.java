@@ -3,9 +3,9 @@ package org.alfresco.contentlake.syncer.job;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.model.SyncJob;
-import org.alfresco.contentlake.syncer.model.SyncReport;
-import org.alfresco.contentlake.syncer.model.SyncJobStatus;
+import org.alfresco.contentlake.syncer.entity.SyncJob;
+import org.alfresco.contentlake.syncer.entity.SyncReport;
+import org.alfresco.contentlake.syncer.entity.SyncJobStatus;
 import org.alfresco.contentlake.syncer.model.api.JobRunrSummaryResponseDTO;
 import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.alfresco.contentlake.syncer.model.job.SyncJobRunRequestDTO;
@@ -65,6 +65,7 @@ public class SyncJobService {
                 request.deleteRemoteMissing
         );
         job.setForceNewVersion(request.forceNewVersion);
+        job.setForceVersionType(request.resolvedForceVersionType());
 
         syncJobRequestStore.save(jobId, request);
         String jobRunrId = String.valueOf(jobRequestScheduler.create(JobBuilder.aJob()
@@ -126,6 +127,7 @@ public class SyncJobService {
                 request.deleteRemoteMissing
         ));
         job.setForceNewVersion(request.forceNewVersion);
+        job.setForceVersionType(request.resolvedForceVersionType());
         syncJobRepository.save(job);
         LOG.infof("Sync job %s is running", jobId);
     }
@@ -212,4 +214,5 @@ public class SyncJobService {
         }
     }
 }
+
 

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.25.xsd">
+
+    <changeSet id="syncer-001-create-sync-job" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sync_job"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sync_job">
+            <column name="job_id" type="VARCHAR(128)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="jobrunr_id" type="VARCHAR(128)"/>
+            <column name="status" type="VARCHAR(32)"/>
+            <column name="created_at" type="TIMESTAMP"/>
+            <column name="started_at" type="TIMESTAMP"/>
+            <column name="completed_at" type="TIMESTAMP"/>
+            <column name="local_root" type="VARCHAR(4096)"/>
+            <column name="remote_root_node_id" type="VARCHAR(512)"/>
+            <column name="report_output" type="VARCHAR(4096)"/>
+            <column name="dry_run" type="BOOLEAN"/>
+            <column name="delete_remote_missing" type="BOOLEAN"/>
+            <column name="error_message" type="CLOB"/>
+            <column name="payload_json" type="CLOB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="syncer-002-create-sync-job-request" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sync_job_request"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sync_job_request">
+            <column name="job_id" type="VARCHAR(128)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP"/>
+            <column name="payload_json" type="CLOB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="syncer-003-create-sync-job-report" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sync_job_report"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sync_job_report">
+            <column name="job_id" type="VARCHAR(128)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP"/>
+            <column name="json_report" type="CLOB"/>
+            <column name="csv_report" type="CLOB"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="syncer-004-create-sync-state" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sync_state"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sync_state">
+            <column name="remote_root_node_id" type="VARCHAR(512)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="payload_json" type="CLOB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

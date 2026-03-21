@@ -2,7 +2,8 @@ package org.alfresco.contentlake.syncer.service;
 
 import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.alfresco.contentlake.syncer.model.RemoteNodeDTO;
-import org.alfresco.contentlake.syncer.model.SyncStateEntry;
+import org.alfresco.contentlake.syncer.model.SyncVersionType;
+import org.alfresco.contentlake.syncer.entity.SyncStateEntry;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -66,7 +67,8 @@ class LocalFolderSyncServiceTest {
                 "1",
                 3L,
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-                Instant.parse("2026-01-02T00:00:00Z")
+                Instant.parse("2026-01-02T00:00:00Z"),
+                Instant.parse("2026-01-03T00:00:00Z")
         );
 
         assertFalse(service.needsUpdate(file, remoteNode, stateEntry, new HashMap<>(), "test.txt"));
@@ -109,7 +111,8 @@ class LocalFolderSyncServiceTest {
                 "1",
                 3L,
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-                Instant.parse("2026-01-02T00:00:00Z")
+                Instant.parse("2026-01-02T00:00:00Z"),
+                Instant.parse("2026-01-03T00:00:00Z")
         );
 
         assertTrue(service.needsUpdate(file, remoteNode, stateEntry, new HashMap<>(), "test.txt"));
@@ -134,7 +137,8 @@ class LocalFolderSyncServiceTest {
                 "1",
                 3L,
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-                Instant.parse("2026-01-02T00:00:00Z")
+                Instant.parse("2026-01-02T00:00:00Z"),
+                Instant.parse("2026-01-03T00:00:00Z")
         );
 
         assertTrue(service.alreadyTransferredSuccessfully(file, remoteNode, stateEntry, new HashMap<>(), "test.txt"));
@@ -144,6 +148,7 @@ class LocalFolderSyncServiceTest {
     void canForceNewVersionForExistingRemoteFile() {
         StartSyncRequestDTO request = new StartSyncRequestDTO();
         request.forceNewVersion = true;
+        request.forceVersionType = SyncVersionType.MAJOR;
 
         RemoteNodeDTO remoteNode = new RemoteNodeDTO(
                 "1",
@@ -155,6 +160,8 @@ class LocalFolderSyncServiceTest {
         );
 
         assertTrue(service.shouldForceNewVersion(request, remoteNode));
+        assertTrue(request.resolvedForceVersionType().isMajor());
     }
 }
+
 

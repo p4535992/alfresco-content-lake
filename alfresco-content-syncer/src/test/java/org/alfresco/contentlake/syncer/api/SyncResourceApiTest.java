@@ -2,17 +2,22 @@ package org.alfresco.contentlake.syncer.api;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.alfresco.contentlake.syncer.entity.SyncState;
+import org.alfresco.contentlake.syncer.entity.SyncStateEntry;
 import org.alfresco.contentlake.syncer.job.SyncJobRepository;
 import org.alfresco.contentlake.syncer.job.SyncReportArchiveRepository;
-import org.alfresco.contentlake.syncer.model.SyncJob;
-import org.alfresco.contentlake.syncer.model.SyncReport;
+import org.alfresco.contentlake.syncer.entity.SyncJob;
+import org.alfresco.contentlake.syncer.entity.SyncReport;
+import org.alfresco.contentlake.syncer.service.SyncStateStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
 
 @QuarkusTest
 class SyncResourceApiTest {
@@ -22,6 +27,9 @@ class SyncResourceApiTest {
 
     @Inject
     SyncReportArchiveRepository syncReportArchiveRepository;
+
+    @Inject
+    SyncStateStore syncStateStore;
 
     @BeforeEach
     void setUp() {
@@ -65,6 +73,17 @@ class SyncResourceApiTest {
                   ]
                 }
                 """, "details,\"contracts/b.pdf\",\"upload-file\",\"FAILED\",64,\"\",\"upload failed\"");
+
+        SyncState syncState = new SyncState();
+        syncState.getEntries().put("contracts/a.pdf", new SyncStateEntry(
+                "contracts/a.pdf",
+                "node-1",
+                128L,
+                "abc123",
+                Instant.parse("2026-01-01T10:00:00Z"),
+                Instant.parse("2026-01-01T10:05:00Z")
+        ));
+        syncStateStore.save("remote-root", syncState);
     }
 
     @Test
@@ -105,5 +124,36 @@ class SyncResourceApiTest {
                 .body("[1].jobId", equalTo("job-report-json"))
                 .body("[1].status", equalTo("COMPLETED"));
     }
+
+    @Test
+    void returnsTrackedStateForRemoteRoot() {
+        given()
+                .when()
+                .get("/api/sync/state/remote-root")
+                .then()
+                .statusCode(200)
+                .body("remoteRootNodeId", equalTo("remote-root"))
+                .body("entryCount", equalTo(1))
+                .body("entries[0].relativePath", equalTo("contracts/a.pdf"))
+                .body("entries[0].remoteNodeId", equalTo("node-1"));
+    }
+
+    @Test
+    void clearsTrackedStateForRemoteRoot() {
+        given()
+                .when()
+                .delete("/api/sync/state/remote-root")
+                .then()
+                .statusCode(204);
+
+        given()
+                .when()
+                .get("/api/sync/state/remote-root")
+                .then()
+                .statusCode(200)
+                .body("entryCount", equalTo(0))
+                .body("entries", hasSize(0));
+    }
 }
+
 

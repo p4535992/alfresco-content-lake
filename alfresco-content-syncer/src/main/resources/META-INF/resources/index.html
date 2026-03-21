@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -284,6 +284,14 @@
         <label><input id="dryRun" type="checkbox" checked>Dry run</label>
         <label><input id="deleteRemoteMissing" type="checkbox">Delete remote missing</label>
       </div>
+      <div style="margin-top: 12px;">
+        <label for="forceVersionType" id="forceVersionTypeLabel">Forced version type</label>
+        <select id="forceVersionType">
+          <option value="MINOR">Minor version</option>
+          <option value="MAJOR">Major version</option>
+        </select>
+        <div class="helper" id="forceVersionTypeHelper">Used only when you start a forced version sync.</div>
+      </div>
       <div style="margin-top: 14px;">
         <button id="startButton">Start sync job</button>
         <button id="forceVersionButton" class="ghost" type="button">Force new version sync</button>
@@ -398,6 +406,36 @@
     </div>
   </section>
 
+  <section class="card">
+    <div class="section-head">
+      <div>
+        <h2 id="trackedStateTitle">Already Transferred</h2>
+        <div id="trackedStateHelper" class="helper">Local persisted transfer state for the selected job or current remote target.</div>
+      </div>
+      <div class="toolbar">
+        <button id="refreshTrackedStateButton" class="ghost" type="button">Refresh tracked state</button>
+        <button id="clearTrackedStateButton" class="ghost" type="button">Clear local transfer state</button>
+      </div>
+    </div>
+    <div id="trackedStateMeta" class="helper">Select a job or remote target to inspect the locally tracked state.</div>
+    <div class="transfer-table-wrap" style="margin-top: 12px;">
+      <table class="transfer-table">
+        <thead>
+        <tr>
+          <th id="trackedStateHeaderPath">File</th>
+          <th id="trackedStateHeaderLastTransferred">Last transferred</th>
+          <th id="trackedStateHeaderSize">Size</th>
+          <th id="trackedStateHeaderNodeId">Node Id</th>
+          <th id="trackedStateHeaderChecksum">SHA-256</th>
+        </tr>
+        </thead>
+        <tbody id="trackedStateTableBody">
+        <tr><td colspan="5">Select a job or remote target to inspect the locally tracked state.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="split">
     <div class="card">
       <h2>Logs</h2>
@@ -439,6 +477,7 @@
   const messageEl = document.getElementById('message');
   const startButton = document.getElementById('startButton');
   const forceVersionButton = document.getElementById('forceVersionButton');
+  const forceVersionTypeEl = document.getElementById('forceVersionType');
   const downloadCsvButton = document.getElementById('downloadCsvButton');
   const downloadJsonButton = document.getElementById('downloadJsonButton');
   const openDashboardButton = document.getElementById('openDashboardButton');
@@ -464,6 +503,19 @@
   const tabTransferredEl = document.getElementById('tabTransferred');
   const tabInProgressEl = document.getElementById('tabInProgress');
   const tabErrorEl = document.getElementById('tabError');
+  const trackedStateTitleEl = document.getElementById('trackedStateTitle');
+  const trackedStateHelperEl = document.getElementById('trackedStateHelper');
+  const trackedStateMetaEl = document.getElementById('trackedStateMeta');
+  const trackedStateTableBodyEl = document.getElementById('trackedStateTableBody');
+  const refreshTrackedStateButton = document.getElementById('refreshTrackedStateButton');
+  const clearTrackedStateButton = document.getElementById('clearTrackedStateButton');
+  const trackedStateHeaderPathEl = document.getElementById('trackedStateHeaderPath');
+  const trackedStateHeaderLastTransferredEl = document.getElementById('trackedStateHeaderLastTransferred');
+  const trackedStateHeaderSizeEl = document.getElementById('trackedStateHeaderSize');
+  const trackedStateHeaderNodeIdEl = document.getElementById('trackedStateHeaderNodeId');
+  const trackedStateHeaderChecksumEl = document.getElementById('trackedStateHeaderChecksum');
+  const forceVersionTypeLabelEl = document.getElementById('forceVersionTypeLabel');
+  const forceVersionTypeHelperEl = document.getElementById('forceVersionTypeHelper');
   const languageSelectEl = document.getElementById('languageSelect');
   const transferSectionTitleEl = document.getElementById('transferSectionTitle');
   const transferSectionHelperEl = document.getElementById('transferSectionHelper');
@@ -499,6 +551,7 @@
   let activeTransferTab = 'transferred';
   let currentSelectedJob = null;
   let currentJobRunrSummary = null;
+  let currentTrackedState = null;
   let currentJobs = [];
   let currentReports = [];
   let activeJobFilter = 'all';
@@ -546,6 +599,11 @@
       forceVersionButton: 'Force new version sync',
       forceVersionEnabled: 'Forcing a new Alfresco version for existing remote files...',
       forceVersionAccepted: 'Forced version job {jobId} accepted.',
+      forceVersionTypeLabel: 'Forced version type',
+      forceVersionTypeHelper: 'Used only when you start a forced version sync.',
+      forceVersionTypeMinor: 'Minor version',
+      forceVersionTypeMajor: 'Major version',
+      forceVersionTypeMeta: 'Forced version type',
       queueSummaryTitle: 'Job Queue Summary',
       queueSummaryHelper: 'Live JobRunr counters from the embedded H2-backed queue.',
       queueEnqueued: 'Enqueued',
@@ -581,6 +639,22 @@
       reportsNone: 'No archived reports available.',
       reportsRefreshFailed: 'Failed to load reports',
       viewJob: 'View job',
+      trackedStateTitle: 'Already Transferred',
+      trackedStateHelper: 'Local persisted transfer state for the selected job or current remote target.',
+      trackedStateRefresh: 'Refresh tracked state',
+      trackedStateClear: 'Clear local transfer state',
+      trackedStateSelectTarget: 'Select a job or remote target to inspect the locally tracked state.',
+      trackedStateEmpty: 'No locally tracked transfers for this remote root.',
+      trackedStateRoot: 'Tracked remote root: {id} | Entries: {count}',
+      trackedStateCleared: 'Local transfer state cleared.',
+      trackedStateClearConfirm: 'Clear the locally tracked transfer state for the current remote root?',
+      trackedStateRefreshFailed: 'Failed to load tracked transfer state',
+      trackedStateClearFailed: 'Failed to clear tracked transfer state',
+      trackedStatePath: 'File',
+      trackedStateLastTransferred: 'Last transferred',
+      trackedStateSize: 'Size',
+      trackedStateNodeId: 'Node Id',
+      trackedStateChecksum: 'SHA-256',
       logsDirectory: 'Directory: {path}',
       logsNoneYet: 'No log files yet',
       logsNoEntries: 'No log entries available.',
@@ -623,6 +697,11 @@
       forceVersionButton: 'Forza nuova versione',
       forceVersionEnabled: 'Forzatura di una nuova versione Alfresco per i file remoti esistenti...',
       forceVersionAccepted: 'Job di versione forzata {jobId} accettato.',
+      forceVersionTypeLabel: 'Tipo versione forzata',
+      forceVersionTypeHelper: 'Usato solo quando avvii una sincronizzazione con nuova versione forzata.',
+      forceVersionTypeMinor: 'Versione minore',
+      forceVersionTypeMajor: 'Versione maggiore',
+      forceVersionTypeMeta: 'Tipo versione forzata',
       queueSummaryTitle: 'Riepilogo Coda Job',
       queueSummaryHelper: 'Contatori JobRunr in tempo reale dalla coda embedded basata su H2.',
       queueEnqueued: 'In coda',
@@ -658,6 +737,22 @@
       reportsNone: 'Nessun report archiviato disponibile.',
       reportsRefreshFailed: 'Caricamento report fallito',
       viewJob: 'Apri job',
+      trackedStateTitle: 'Gia trasferiti',
+      trackedStateHelper: 'Stato trasferimenti persistito localmente per il job selezionato o per il target remoto corrente.',
+      trackedStateRefresh: 'Aggiorna stato persistito',
+      trackedStateClear: 'Svuota stato locale trasferimenti',
+      trackedStateSelectTarget: 'Seleziona un job o un target remoto per ispezionare lo stato locale persistito.',
+      trackedStateEmpty: 'Nessun trasferimento locale tracciato per questa radice remota.',
+      trackedStateRoot: 'Radice remota tracciata: {id} | Entry: {count}',
+      trackedStateCleared: 'Stato locale trasferimenti cancellato.',
+      trackedStateClearConfirm: 'Cancellare lo stato locale dei trasferimenti per la radice remota corrente?',
+      trackedStateRefreshFailed: 'Caricamento stato trasferimenti fallito',
+      trackedStateClearFailed: 'Cancellazione stato trasferimenti fallita',
+      trackedStatePath: 'File',
+      trackedStateLastTransferred: 'Ultimo trasferimento',
+      trackedStateSize: 'Dimensione',
+      trackedStateNodeId: 'Node Id',
+      trackedStateChecksum: 'SHA-256',
       logsDirectory: 'Cartella: {path}',
       logsNoneYet: 'Nessun file di log disponibile',
       logsNoEntries: 'Nessuna entry di log disponibile.',
@@ -710,6 +805,7 @@
       dryRun: document.getElementById('dryRun').checked,
       deleteRemoteMissing: document.getElementById('deleteRemoteMissing').checked,
       forceNewVersion,
+      forceVersionType: forceVersionTypeEl.value || 'MINOR',
       reportOutput: document.getElementById('reportOutput').value.trim()
     };
   }
@@ -751,6 +847,14 @@
     jobrunrSummaryHelperEl.textContent = t('queueSummaryHelper');
     openSettingsButton.textContent = t('settings');
     forceVersionButton.textContent = t('forceVersionButton');
+    forceVersionTypeLabelEl.textContent = t('forceVersionTypeLabel');
+    forceVersionTypeHelperEl.textContent = t('forceVersionTypeHelper');
+    const currentForceVersionType = forceVersionTypeEl.value || 'MINOR';
+    forceVersionTypeEl.innerHTML = `
+      <option value="MINOR">${escapeHtml(t('forceVersionTypeMinor'))}</option>
+      <option value="MAJOR">${escapeHtml(t('forceVersionTypeMajor'))}</option>
+    `;
+    forceVersionTypeEl.value = currentForceVersionType;
     reportsSectionTitleEl.textContent = t('reportsTitle');
     reportsSectionHelperEl.textContent = t('reportsHelper');
     reportSearchInputEl.placeholder = t('reportsSearchPlaceholder');
@@ -763,6 +867,15 @@
     reportsHeaderLocalRootEl.textContent = t('reportsLocalRoot');
     reportsHeaderRemoteRootEl.textContent = t('reportsRemoteRoot');
     reportsHeaderActionsEl.textContent = t('reportsActions');
+    trackedStateTitleEl.textContent = t('trackedStateTitle');
+    trackedStateHelperEl.textContent = t('trackedStateHelper');
+    refreshTrackedStateButton.textContent = t('trackedStateRefresh');
+    clearTrackedStateButton.textContent = t('trackedStateClear');
+    trackedStateHeaderPathEl.textContent = t('trackedStatePath');
+    trackedStateHeaderLastTransferredEl.textContent = t('trackedStateLastTransferred');
+    trackedStateHeaderSizeEl.textContent = t('trackedStateSize');
+    trackedStateHeaderNodeIdEl.textContent = t('trackedStateNodeId');
+    trackedStateHeaderChecksumEl.textContent = t('trackedStateChecksum');
     reportStatusFilterEl.innerHTML = `
       <option value="all">${escapeHtml(t('reportsStatusFilterAll'))}</option>
       <option value="COMPLETED">${escapeHtml(t('reportsStatusFilterCompleted'))}</option>
@@ -771,6 +884,7 @@
     reportStatusFilterEl.value = reportStatusFilter;
     renderJobFilters(currentJobs);
     renderReports(currentReports);
+    renderTrackedState(currentTrackedState);
     if (!verifiedConnection) {
       setConnectionStatus(t('connectionNotVerified'), 'warn');
     }
@@ -1167,6 +1281,46 @@
     });
   }
 
+  function activeTrackedRootId() {
+    return selectedRemoteFolderId || (currentSelectedJob && currentSelectedJob.remoteRootNodeId) || '';
+  }
+
+  function renderTrackedState(stateView) {
+    currentTrackedState = stateView || null;
+    trackedStateTableBodyEl.innerHTML = '';
+
+    if (!stateView || !stateView.remoteRootNodeId) {
+      trackedStateMetaEl.textContent = t('trackedStateSelectTarget');
+      trackedStateTableBodyEl.innerHTML = `<tr><td colspan="5">${escapeHtml(t('trackedStateSelectTarget'))}</td></tr>`;
+      clearTrackedStateButton.disabled = true;
+      return;
+    }
+
+    trackedStateMetaEl.textContent = t('trackedStateRoot', {
+      id: stateView.remoteRootNodeId,
+      count: stateView.entryCount ?? 0
+    });
+
+    const entries = stateView.entries || [];
+    clearTrackedStateButton.disabled = entries.length === 0;
+    if (!entries.length) {
+      trackedStateTableBodyEl.innerHTML = `<tr><td colspan="5">${escapeHtml(t('trackedStateEmpty'))}</td></tr>`;
+      return;
+    }
+
+    entries.forEach(entry => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${escapeHtml(entry.relativePath || '-')}</td>
+        <td>${escapeHtml(formatDate(entry.lastTransferredAt))}</td>
+        <td>${entry.sizeInBytes != null && entry.sizeInBytes >= 0 ? formatBytes(entry.sizeInBytes) : '-'}</td>
+        <td>${escapeHtml(entry.remoteNodeId || '-')}</td>
+        <td><code>${escapeHtml(entry.sha256 || '-')}</code></td>
+      `;
+      trackedStateTableBodyEl.appendChild(row);
+    });
+  }
+
   function renderJob(job) {
     if (!job) {
       metaEl.innerHTML = '';
@@ -1175,6 +1329,7 @@
       downloadJsonButton.disabled = true;
       currentSelectedJob = null;
       renderTransferTable(null);
+      loadTrackedState().catch(err => setMessage(err.message || t('trackedStateRefreshFailed'), 'err'));
       return;
     }
 
@@ -1186,6 +1341,7 @@
       <div><span>Dry run</span><strong>${job.dryRun}</strong></div>
       <div><span>Delete missing</span><strong>${job.deleteRemoteMissing}</strong></div>
       <div><span>Force new version</span><strong>${job.forceNewVersion === true}</strong></div>
+      <div><span>${escapeHtml(t('forceVersionTypeMeta'))}</span><strong>${escapeHtml(job.forceVersionType || 'MINOR')}</strong></div>
       <div><span>Remote root</span><strong>${job.remoteRootNodeId}</strong></div>
       <div><span>JobRunr job</span><strong>${job.jobRunrId || '-'}</strong></div>
       <div><span>Report output</span><strong>${job.reportOutput || '-'}</strong></div>
@@ -1461,6 +1617,8 @@
     if (!selectedJobId && jobs.length) {
       selectedJobId = jobs[0].jobId;
       await loadJob(selectedJobId);
+    } else if (!jobs.length) {
+      await loadTrackedState();
     }
   }
 
@@ -1468,6 +1626,7 @@
     const response = await apiFetch(`/api/sync/jobs/${jobId}`);
     const job = await response.json();
     renderJob(job);
+    await loadTrackedState();
 
     if (job.status === 'RUNNING' || job.status === 'QUEUED') {
       if (!pollHandle) {
@@ -1481,6 +1640,7 @@
           const inner = await apiFetch(`/api/sync/jobs/${currentJobId}`);
           const updated = await inner.json();
           renderJob(updated);
+          await loadTrackedState();
           await loadJobs();
           if (updated.status !== 'RUNNING' && updated.status !== 'QUEUED') {
             clearInterval(pollHandle);
@@ -1547,6 +1707,7 @@
     useCurrentButton.disabled = false;
     browseBackButton.disabled = true;
     renderBrowser(data);
+    await loadTrackedState();
   }
 
   async function browseCurrentFolder() {
@@ -1559,6 +1720,7 @@
     const data = await response.json();
     renderBrowser(data);
     browseBackButton.disabled = browseStack.length <= 1;
+    await loadTrackedState();
   }
 
   async function selectLocalFolder() {
@@ -1594,6 +1756,32 @@
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+  }
+
+  async function loadTrackedState() {
+    const remoteRootNodeId = activeTrackedRootId();
+    if (!remoteRootNodeId) {
+      renderTrackedState(null);
+      return;
+    }
+    const response = await apiFetch(`/api/sync/state/${encodeURIComponent(remoteRootNodeId)}`);
+    const payload = await response.json();
+    renderTrackedState(payload);
+  }
+
+  async function clearTrackedState() {
+    const remoteRootNodeId = activeTrackedRootId();
+    if (!remoteRootNodeId) {
+      throw new Error(t('trackedStateSelectTarget'));
+    }
+    const confirmed = window.confirm(t('trackedStateClearConfirm'));
+    if (!confirmed) {
+      return;
+    }
+    await apiFetch(`/api/sync/state/${encodeURIComponent(remoteRootNodeId)}`, {
+      method: 'DELETE'
+    });
+    await loadTrackedState();
   }
 
   function exportReportsCsv() {
@@ -1680,6 +1868,7 @@
     selectedRemoteFolderPath = currentBrowsePath();
     selectedTargetEl.textContent = t('selectedTarget', { path: selectedRemoteFolderPath, id: selectedRemoteFolderId });
     setMessage(t('remoteTargetSelected'), 'ok');
+    loadTrackedState().catch(error => setMessage(error.message || t('trackedStateRefreshFailed'), 'err'));
   });
 
   document.getElementById('selectLocalRootButton').addEventListener('click', async () => {
@@ -1812,6 +2001,21 @@
       await loadReports();
     } catch (error) {
       setMessage(error.message || t('reportsRefreshFailed'), 'err');
+    }
+  });
+  refreshTrackedStateButton.addEventListener('click', async () => {
+    try {
+      await loadTrackedState();
+    } catch (error) {
+      setMessage(error.message || t('trackedStateRefreshFailed'), 'err');
+    }
+  });
+  clearTrackedStateButton.addEventListener('click', async () => {
+    try {
+      await clearTrackedState();
+      setMessage(t('trackedStateCleared'), 'ok');
+    } catch (error) {
+      setMessage(error.message || t('trackedStateClearFailed'), 'err');
     }
   });
   Array.from(jobFilterGridEl.querySelectorAll('.filter-card')).forEach(card => {
