@@ -1,0 +1,470 @@
+<section class="grid-hero">
+  <article class="card">
+    <div class="muted">{{ t('heroPill') }}</div>
+    <h2>{{ t('appTitle') }}</h2>
+    <p class="muted">{{ t('heroBody') }}</p>
+  </article>
+
+  <article class="card">
+    <h3>{{ t('notesTitle') }}</h3>
+    <p class="muted">{{ t('notesBody') }}</p>
+    <div class="toolbar" style="margin-top: 1rem;">
+      <button type="button" class="ghost" (click)="openDashboard()">{{ t('openDashboard') }}</button>
+    </div>
+  </article>
+</section>
+
+<section class="card" *ngIf="message.text">
+  <div class="status-box" [ngClass]="message.kind">{{ message.text }}</div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>{{ t('connectionTitle') }}</h2>
+      <p class="helper">{{ t('validationRulesBody') }}</p>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div>
+      <label for="authToken">{{ t('tokenLabel') }}</label>
+      <input id="authToken" [(ngModel)]="authToken" (ngModelChange)="onTokenChanged()" />
+    </div>
+    <div>
+      <label for="alfrescoBaseUrl">{{ t('baseUrlLabel') }}</label>
+      <input
+        id="alfrescoBaseUrl"
+        [(ngModel)]="connection.alfrescoBaseUrl"
+        (ngModelChange)="onConnectionChanged()"
+        [class]="fieldState('alfrescoBaseUrl', connection.alfrescoBaseUrl)"
+      />
+      <div class="field-error">{{ fieldErrors['alfrescoBaseUrl'] || '' }}</div>
+    </div>
+    <div class="mini-card">
+      <strong>{{ t('validationRules') }}</strong>
+      <p class="muted">{{ t('validationRulesBody') }}</p>
+    </div>
+    <div>
+      <label for="username">{{ t('usernameLabel') }}</label>
+      <input
+        id="username"
+        [(ngModel)]="connection.username"
+        (ngModelChange)="onConnectionChanged()"
+        [class]="fieldState('username', connection.username)"
+      />
+      <div class="field-error">{{ fieldErrors['username'] || '' }}</div>
+    </div>
+    <div>
+      <label for="password">{{ t('passwordLabel') }}</label>
+      <input
+        id="password"
+        type="password"
+        [(ngModel)]="connection.password"
+        (ngModelChange)="onConnectionChanged()"
+        [class]="fieldState('password', connection.password)"
+      />
+      <div class="field-error">{{ fieldErrors['password'] || '' }}</div>
+    </div>
+    <div>
+      <label for="ticket">{{ t('ticketLabel') }}</label>
+      <input
+        id="ticket"
+        [(ngModel)]="connection.ticket"
+        (ngModelChange)="onConnectionChanged()"
+        [class]="fieldState('ticket', connection.ticket)"
+      />
+      <div class="field-error">{{ fieldErrors['ticket'] || '' }}</div>
+    </div>
+  </div>
+
+  <div class="toolbar" style="margin-top: 1rem;">
+    <button type="button" (click)="verifyConnection()">{{ t('verifyConnection') }}</button>
+    <button type="button" class="ghost" (click)="reloadSites()">{{ t('reloadSites') }}</button>
+  </div>
+
+  <div class="status-box" [ngClass]="connectionStatus.kind" style="margin-top: 1rem;">{{ connectionStatus.text }}</div>
+
+  <div class="grid-2" style="margin-top: 1rem;">
+    <div>
+      <label for="siteSelect">{{ t('siteLabel') }}</label>
+      <select id="siteSelect" [(ngModel)]="selectedSiteId">
+        <option value="" disabled>{{ sites.length ? t('selectSite') : t('sitePlaceholder') }}</option>
+        <option *ngFor="let site of sites" [value]="site.id">{{ siteLabel(site) }} ({{ site.id }})</option>
+      </select>
+      <div class="field-error">{{ fieldErrors['site'] || '' }}</div>
+    </div>
+    <div class="mini-card">
+      <strong>{{ t('authenticatedUser') }}</strong>
+      <p class="muted">{{ verifiedUser || '-' }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="grid-3">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <h2>{{ t('browseTitle') }}</h2>
+        <p class="helper">{{ t('browseHelper') }}</p>
+      </div>
+    </div>
+    <div class="mini-card">
+      <strong>{{ browserHeading }}</strong>
+      <p class="muted" *ngIf="browseState">{{ browseState.currentNode.id }}</p>
+    </div>
+    <div class="toolbar" style="margin-top: 1rem;">
+      <button type="button" class="ghost" (click)="loadSiteRoot()">{{ t('loadDocumentLibrary') }}</button>
+      <button type="button" class="ghost" (click)="browseBack()" [disabled]="browseStack.length <= 1">{{ t('back') }}</button>
+      <button type="button" class="ghost" (click)="useCurrentFolder()" [disabled]="!browseState">{{ t('useCurrentFolder') }}</button>
+    </div>
+  </article>
+
+  <article class="card">
+    <h2>{{ t('foldersTitle') }}</h2>
+    <div class="list-stack" *ngIf="browserFolders.length; else noFolders">
+      <button
+        type="button"
+        class="ghost"
+        *ngFor="let folder of browserFolders"
+        (click)="browseToChild(folder.id, folder.name)"
+        style="justify-content: flex-start; border-radius: 16px;"
+      >
+        {{ folder.name }}<br />
+        <small>{{ folder.id }}</small>
+      </button>
+    </div>
+    <ng-template #noFolders>
+      <div class="empty-state">{{ browseState ? t('noSubfolders') : t('browsePlaceholder') }}</div>
+    </ng-template>
+  </article>
+
+  <article class="card">
+    <h2>{{ t('startJobTitle') }}</h2>
+    <div>
+      <label for="localRoot">{{ t('localRootLabel') }}</label>
+      <div class="toolbar">
+        <input id="localRoot" [(ngModel)]="jobRequest.localRoot" [class]="fieldState('localRoot', jobRequest.localRoot)" />
+        <button type="button" class="ghost" (click)="selectLocalFolder()">{{ t('selectFolder') }}</button>
+      </div>
+      <div class="field-error">{{ fieldErrors['localRoot'] || '' }}</div>
+    </div>
+
+    <div style="margin-top: 1rem;">
+      <label for="reportOutput">{{ t('reportOutputLabel') }}</label>
+      <input id="reportOutput" [(ngModel)]="jobRequest.reportOutput" [class]="fieldState('reportOutput', jobRequest.reportOutput)" />
+      <div class="field-error">{{ fieldErrors['reportOutput'] || '' }}</div>
+      <div class="helper">{{ t('reportOutputHelper') }}</div>
+    </div>
+
+    <div class="mini-card" style="margin-top: 1rem;">
+      <strong>{{ t('selectedRemoteTarget') }}</strong>
+      <p class="muted">{{ selectedTargetLabel }}</p>
+    </div>
+
+    <div class="pill-row" style="margin-top: 1rem;">
+      <label class="checkline"><input type="checkbox" [(ngModel)]="jobRequest.dryRun" />{{ t('dryRun') }}</label>
+      <label class="checkline"><input type="checkbox" [(ngModel)]="jobRequest.deleteRemoteMissing" />{{ t('deleteRemoteMissing') }}</label>
+    </div>
+
+    <div style="margin-top: 1rem;">
+      <label for="forceVersionType">{{ t('forcedVersionType') }}</label>
+      <select id="forceVersionType" [(ngModel)]="jobRequest.forceVersionType">
+        <option value="MINOR">{{ t('minorVersion') }}</option>
+        <option value="MAJOR">{{ t('majorVersion') }}</option>
+      </select>
+      <div class="helper">{{ t('forcedVersionHelper') }}</div>
+    </div>
+
+    <div class="toolbar" style="margin-top: 1rem;">
+      <button type="button" [disabled]="submittingJob" (click)="submitJob(false)">{{ t('startSyncJob') }}</button>
+      <button type="button" class="ghost" [disabled]="submittingJob" (click)="submitJob(true)">{{ t('forceVersionSync') }}</button>
+    </div>
+  </article>
+</section>
+
+<section class="grid-split">
+  <article class="card">
+    <div class="section-head">
+      <div><h2>{{ t('jobsTitle') }}</h2></div>
+      <input [(ngModel)]="jobSearchQuery" [placeholder]="t('jobsSearchPlaceholder')" />
+    </div>
+
+    <div class="filter-grid">
+      <div
+        *ngFor="let filter of jobFilterCards"
+        class="filter-card"
+        [class.active]="filter.key === activeJobFilter"
+        (click)="activeJobFilter = filter.key"
+      >
+        <span>{{ filter.label }}</span>
+        <strong>{{ filter.count }}</strong>
+      </div>
+    </div>
+
+    <div class="list-stack" *ngIf="filteredJobs.length; else noJobs">
+      <div *ngFor="let job of filteredJobs" class="list-card" [class.active]="job.jobId === selectedJobId" (click)="selectJob(job.jobId)">
+        <strong>{{ job.status }}</strong>
+        <div>{{ job.localRoot }}</div>
+        <small class="muted">{{ job.jobId }} | uploaded {{ job.report?.filesUploaded ?? 0 }} | updated {{ job.report?.filesUpdated ?? 0 }} | skipped {{ job.report?.filesSkipped ?? 0 }}</small>
+      </div>
+    </div>
+    <ng-template #noJobs>
+      <div class="empty-state">{{ t('noJobsForFilter') }}</div>
+    </ng-template>
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <h2>{{ t('selectedJobTitle') }}</h2>
+      <div class="toolbar">
+        <button type="button" class="ghost" [disabled]="!selectedJob?.report" (click)="downloadCsv(selectedJobId)">{{ t('downloadCsv') }}</button>
+        <button type="button" class="ghost" [disabled]="!selectedJob?.report" (click)="downloadJson(selectedJobId)">{{ t('downloadJson') }}</button>
+        <button type="button" class="ghost" (click)="openDashboard()">{{ t('openDashboard') }}</button>
+      </div>
+    </div>
+
+    <div class="mini-grid" *ngIf="selectedJob; else noSelectedJob">
+      <div class="mini-card"><span>Status</span><strong>{{ selectedJob.status }}</strong></div>
+      <div class="mini-card"><span>Dry run</span><strong>{{ selectedJob.dryRun }}</strong></div>
+      <div class="mini-card"><span>Delete missing</span><strong>{{ selectedJob.deleteRemoteMissing }}</strong></div>
+      <div class="mini-card"><span>Force version</span><strong>{{ selectedJob.forceNewVersion }}</strong></div>
+      <div class="mini-card"><span>Version type</span><strong>{{ selectedJob.forceVersionType || 'MINOR' }}</strong></div>
+      <div class="mini-card"><span>Remote root</span><strong>{{ selectedJob.remoteRootNodeId }}</strong></div>
+      <div class="mini-card"><span>JobRunr job</span><strong>{{ selectedJob.jobRunrId || '-' }}</strong></div>
+      <div class="mini-card"><span>Report output</span><strong>{{ selectedJob.reportOutput || '-' }}</strong></div>
+      <div class="mini-card"><span>Started</span><strong>{{ formatDate(selectedJob.startedAt || selectedJob.report?.startedAt) }}</strong></div>
+      <div class="mini-card"><span>Completed</span><strong>{{ formatDate(selectedJob.completedAt || selectedJob.report?.completedAt) }}</strong></div>
+      <div class="mini-card"><span>Files uploaded</span><strong>{{ selectedJob.report?.filesUploaded ?? 0 }}</strong></div>
+      <div class="mini-card"><span>Files updated</span><strong>{{ selectedJob.report?.filesUpdated ?? 0 }}</strong></div>
+    </div>
+
+    <pre class="mono-panel" style="margin-top: 1rem;">{{ reportText(selectedJob) }}</pre>
+
+    <ng-template #noSelectedJob>
+      <div class="empty-state">{{ t('reportNotSelected') }}</div>
+    </ng-template>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>{{ t('reportsTitle') }}</h2>
+      <p class="helper">{{ t('reportsHelper') }}</p>
+    </div>
+    <div class="toolbar">
+      <input [(ngModel)]="reportSearchQuery" [placeholder]="t('reportsSearch')" />
+      <select [(ngModel)]="reportStatusFilter">
+        <option value="all">{{ t('reportsStatuses') }}</option>
+        <option value="COMPLETED">{{ t('succeeded') }}</option>
+        <option value="FAILED">{{ t('failed') }}</option>
+      </select>
+      <input type="date" [(ngModel)]="reportCompletedFrom" [title]="t('completedFrom')" />
+      <button type="button" class="ghost" (click)="exportReportsCsv()">{{ t('exportReportsCsv') }}</button>
+      <button type="button" class="ghost" (click)="refreshReports()">{{ t('refreshReports') }}</button>
+    </div>
+  </div>
+
+  <div class="table-shell">
+    <table>
+      <thead>
+      <tr>
+        <th class="sortable" (click)="sortReports('completedAt')">{{ reportSortLabel('completedAt', t('completedFrom')) }}</th>
+        <th class="sortable" (click)="sortReports('jobId')">{{ reportSortLabel('jobId', 'Job Id') }}</th>
+        <th class="sortable" (click)="sortReports('status')">{{ reportSortLabel('status', 'Status') }}</th>
+        <th class="sortable" (click)="sortReports('localRoot')">{{ reportSortLabel('localRoot', t('localRootLabel')) }}</th>
+        <th class="sortable" (click)="sortReports('remoteRootNodeId')">{{ reportSortLabel('remoteRootNodeId', 'Remote Root') }}</th>
+        <th>Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr *ngIf="!visibleReports.length">
+        <td colspan="6">{{ t('reportsNone') }}</td>
+      </tr>
+      <tr *ngFor="let report of visibleReports">
+        <td>{{ formatDate(report.completedAt || report.createdAt) }}</td>
+        <td>{{ report.jobId }}</td>
+        <td>{{ report.status }}</td>
+        <td>{{ report.localRoot || '-' }}</td>
+        <td>{{ report.remoteRootNodeId || '-' }}</td>
+        <td>
+          <div class="toolbar">
+            <button type="button" class="ghost" (click)="selectJob(report.jobId)">{{ t('viewJob') }}</button>
+            <button type="button" class="ghost" (click)="downloadCsv(report.jobId)">CSV</button>
+            <button type="button" class="ghost" (click)="downloadJson(report.jobId)">JSON</button>
+          </div>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>{{ t('queueTitle') }}</h2>
+      <p class="helper">{{ t('queueHelper') }}</p>
+    </div>
+  </div>
+
+  <div class="mini-grid">
+    <div class="mini-card"><span>{{ t('queueEnqueued') }}</span><strong>{{ jobRunrSummary?.enqueued ?? 0 }}</strong></div>
+    <div class="mini-card"><span>{{ t('queueProcessing') }}</span><strong>{{ jobRunrSummary?.processing ?? 0 }}</strong></div>
+    <div class="mini-card"><span>{{ t('queueFailed') }}</span><strong>{{ jobRunrSummary?.failed ?? 0 }}</strong></div>
+    <div class="mini-card"><span>{{ t('queueSucceeded') }}</span><strong>{{ jobRunrSummary?.succeeded ?? 0 }}</strong></div>
+    <div class="mini-card"><span>{{ t('queueServers') }}</span><strong>{{ jobRunrSummary?.backgroundJobServers ?? 0 }}</strong></div>
+    <div class="mini-card"><span>{{ t('queueTotal') }}</span><strong>{{ jobRunrSummary?.total ?? 0 }}</strong></div>
+  </div>
+</section>
+
+<section class="grid-split">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <h2>{{ t('transferTitle') }}</h2>
+        <p class="helper">{{ t('transferHelper') }}</p>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button type="button" class="tab-button" [class.active]="activeTransferTab === 'transferred'" (click)="selectTransferTab('transferred')">
+        {{ t('transferred') }} ({{ transferCount('transferred') }})
+      </button>
+      <button type="button" class="tab-button" [class.active]="activeTransferTab === 'inProgress'" (click)="selectTransferTab('inProgress')">
+        {{ t('inProgress') }} ({{ transferCount('inProgress') }})
+      </button>
+      <button type="button" class="tab-button" [class.active]="activeTransferTab === 'error'" (click)="selectTransferTab('error')">
+        {{ t('error') }} ({{ transferCount('error') }})
+      </button>
+    </div>
+
+    <div class="table-shell">
+      <table>
+        <thead>
+        <tr>
+          <th>File</th>
+          <th>Operation</th>
+          <th>Status</th>
+          <th>Size</th>
+          <th>Node Id</th>
+          <th>Message</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngIf="!selectedJob">
+          <td colspan="6">{{ t('transferSelectJob') }}</td>
+        </tr>
+        <tr *ngIf="selectedJob && !visibleTransferEntries.length">
+          <td colspan="6">{{ t('transferEmptyStatus', { status: t(activeTransferTab === 'transferred' ? 'transferred' : activeTransferTab === 'inProgress' ? 'inProgress' : 'error') }) }}</td>
+        </tr>
+        <tr *ngFor="let item of visibleTransferEntries">
+          <td>{{ item.path }}</td>
+          <td>{{ item.operation }}</td>
+          <td><span class="status-chip" [ngClass]="item.statusClass">{{ item.statusLabel }}</span></td>
+          <td>{{ formatBytes(item.sizeInBytes) }}</td>
+          <td>{{ item.remoteNodeId }}</td>
+          <td>{{ item.message }}</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <h2>{{ t('trackedTitle') }}</h2>
+        <p class="helper">{{ t('trackedHelper') }}</p>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="ghost" (click)="refreshTrackedState()">{{ t('refreshTracked') }}</button>
+        <button type="button" class="ghost" (click)="clearTrackedState()">{{ t('clearTracked') }}</button>
+      </div>
+    </div>
+
+    <div class="helper" style="margin-bottom: 1rem;">
+      {{ trackedState?.remoteRootNodeId ? t('trackedRoot', { id: trackedState.remoteRootNodeId, count: trackedState.entryCount }) : t('trackedSelectTarget') }}
+    </div>
+
+    <div class="table-shell">
+      <table>
+        <thead>
+        <tr>
+          <th>{{ t('trackedPath') }}</th>
+          <th>{{ t('trackedLastTransferred') }}</th>
+          <th>{{ t('trackedSize') }}</th>
+          <th>{{ t('trackedNodeId') }}</th>
+          <th>{{ t('trackedChecksum') }}</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngIf="!trackedState">
+          <td colspan="5">{{ t('trackedSelectTarget') }}</td>
+        </tr>
+        <tr *ngIf="trackedState && !trackedEntries.length">
+          <td colspan="5">{{ t('trackedEmpty') }}</td>
+        </tr>
+        <tr *ngFor="let entry of trackedEntries">
+          <td>{{ entry.relativePath || '-' }}</td>
+          <td>{{ formatDate(entry.lastTransferredAt) }}</td>
+          <td>{{ formatBytes(entry.sizeInBytes) }}</td>
+          <td>{{ entry.remoteNodeId || '-' }}</td>
+          <td><code>{{ entry.sha256 || '-' }}</code></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="grid-split">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <h2>{{ t('logsTitle') }}</h2>
+        <div class="helper">{{ logsView?.logsDirectory ? t('logsDirectory', { path: logsView.logsDirectory }) : t('logsNotAvailable') }}</div>
+      </div>
+      <div class="toolbar">
+        <select [(ngModel)]="selectedLogFileName" (ngModelChange)="onLogFileChanged()">
+          <option value="" *ngIf="!(logsView?.files?.length)">{{ t('logsNoFiles') }}</option>
+          <option *ngFor="let file of logsView?.files || []" [value]="file.fileName">{{ file.fileName }} · {{ formatBytes(file.sizeInBytes) }} · {{ formatDate(file.modifiedAt) }}</option>
+        </select>
+        <button type="button" class="ghost" [disabled]="loadingLogs" (click)="loadLogs()">{{ t('refreshLogs') }}</button>
+        <label class="checkline"><input type="checkbox" [(ngModel)]="autoRefreshLogs" (change)="toggleLogsPolling()" />{{ t('autoRefreshLogs') }}</label>
+      </div>
+    </div>
+
+    <div class="table-shell">
+      <table>
+        <thead>
+        <tr>
+          <th>Time</th>
+          <th>Level</th>
+          <th>Category</th>
+          <th>Thread</th>
+          <th>Message</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngIf="!displayLogEntries.length">
+          <td colspan="5">{{ t('logsNoEntries') }}</td>
+        </tr>
+        <tr *ngFor="let entry of displayLogEntries" (click)="selectRawLog(entry)">
+          <td>{{ entry.timestamp || '-' }}</td>
+          <td>{{ entry.level || '-' }}</td>
+          <td>{{ entry.category || '-' }}</td>
+          <td>{{ entry.thread || '-' }}</td>
+          <td>{{ entry.message || entry.raw || '-' }}</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="card">
+    <h2>{{ t('rawLogTitle') }}</h2>
+    <pre class="mono-panel raw">{{ selectedLogRaw || t('logsNoSelected') }}</pre>
+  </article>
+</section>

@@ -1,0 +1,72 @@
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>{{ t('navSettings') }}</h2>
+      <p class="helper">{{ t('settingsIntro') }}</p>
+    </div>
+    <div>
+      <label for="settingsToken" class="sr-only">{{ t('tokenLabel') }}</label>
+      <input id="settingsToken" [(ngModel)]="authToken" (ngModelChange)="onTokenChanged()" [placeholder]="t('tokenLabel')" />
+    </div>
+  </div>
+</section>
+
+<section class="card" *ngIf="message.text">
+  <div class="status-box" [ngClass]="message.kind">{{ message.text }}</div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>{{ t('runtimeTitle') }}</h2>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <label for="httpPort">{{ t('httpPort') }}</label>
+      <input id="httpPort" type="number" [(ngModel)]="form.httpPort" [class]="fieldState('httpPort', form.httpPort)" />
+      <div class="field-error">{{ fieldErrors['httpPort'] || '' }}</div>
+    </div>
+    <div>
+      <label for="dataStorageRoot">{{ t('dataStorageRoot') }}</label>
+      <div class="toolbar">
+        <input id="dataStorageRoot" [(ngModel)]="form.dataStorageRoot" [class]="fieldState('dataStorageRoot', form.dataStorageRoot)" />
+        <button type="button" class="ghost" (click)="browseStorageRoot()">{{ t('selectFolder') }}</button>
+      </div>
+      <div class="field-error">{{ fieldErrors['dataStorageRoot'] || '' }}</div>
+    </div>
+  </div>
+
+  <div class="pill-row" style="margin-top: 1rem;">
+    <label class="checkline">
+      <input type="checkbox" [(ngModel)]="form.openBrowserOnStartup" />
+      {{ t('openBrowserOnStartup') }}
+    </label>
+  </div>
+
+  <div class="toolbar" style="margin-top: 1rem;">
+    <button type="button" (click)="saveSettings()">{{ t('saveSettings') }}</button>
+    <button type="button" class="ghost" (click)="loadSettings()">{{ t('reloadSettings') }}</button>
+  </div>
+
+  <div class="status-box" [ngClass]="settings?.externalConfigPresent ? 'ok' : 'warn'" style="margin-top: 1rem;">
+    {{ settings?.externalConfigPresent ? t('overridePresent') : t('overrideMissing') }}
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>{{ t('effectivePaths') }}</h2>
+      <p class="helper">{{ t('pathsHelper') }}</p>
+    </div>
+  </div>
+
+  <div class="mini-grid">
+    <div class="mini-card"><span>{{ t('configFile') }}</span><strong>{{ settings?.configFilePath || '-' }}</strong></div>
+    <div class="mini-card"><span>{{ t('logsDir') }}</span><strong>{{ settings?.logsDir || '-' }}</strong></div>
+    <div class="mini-card"><span>{{ t('dataDir') }}</span><strong>{{ settings?.dataDir || '-' }}</strong></div>
+    <div class="mini-card"><span>{{ t('jobrunrDir') }}</span><strong>{{ settings?.jobrunrDataDir || '-' }}</strong></div>
+  </div>
+</section>

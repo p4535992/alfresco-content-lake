@@ -1,0 +1,26 @@
+.app-tools a {
+  text-decoration: none;
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.app-tools a.active-link {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.locale-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+}
+
+.locale-picker select {
+  width: auto;
+  min-width: 8rem;
+}

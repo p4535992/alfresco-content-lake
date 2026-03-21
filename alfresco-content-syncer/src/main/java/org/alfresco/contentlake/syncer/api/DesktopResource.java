@@ -48,7 +48,7 @@ public class DesktopResource {
         return new RuntimeInfoResponseDTO(
                 "http://" + startupHost + ":" + httpPort + "/",
                 "http://" + dashboardHost + ":" + dashboardPort + "/",
-                "http://" + startupHost + ":" + httpPort + "/settings.html"
+                "http://" + startupHost + ":" + httpPort + "/settings"
         );
     }
 

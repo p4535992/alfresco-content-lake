@@ -24,6 +24,8 @@ target/
 /nbbuild/
 /dist/
 /alfresco-content-syncer/dist/
+/alfresco-content-syncer/src/main/webui/node_modules/
+/alfresco-content-syncer/src/main/webui/.angular/
 /nbdist/
 /.nb-gradle/
 build/

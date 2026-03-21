@@ -26,6 +26,18 @@ class DesktopResourceApiTest {
     }
 
     @Test
+    void returnsRuntimeInfoForAngularRoutes() {
+        given()
+                .when()
+                .get("/api/system/runtime")
+                .then()
+                .statusCode(200)
+                .body("applicationUrl", endsWith("/"))
+                .body("settingsUrl", endsWith("/settings"))
+                .body("jobRunrDashboardUrl", notNullValue());
+    }
+
+    @Test
     void savesRuntimeSettings() {
         given()
                 .contentType(JSON)

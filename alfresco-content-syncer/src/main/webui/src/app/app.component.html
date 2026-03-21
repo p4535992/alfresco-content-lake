@@ -1,0 +1,27 @@
+<div class="app-shell">
+  <header class="app-header">
+    <a class="app-brand" routerLink="/">
+      <h1>{{ t('appTitle') }}</h1>
+      <p>{{ t('appSubtitle') }}</p>
+    </a>
+
+    <div class="app-tools">
+      <nav class="toolbar" aria-label="Primary">
+        <a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: true }">{{ t('navHome') }}</a>
+        <a routerLink="/settings" routerLinkActive="active-link">{{ t('navSettings') }}</a>
+      </nav>
+
+      <label class="locale-picker">
+        <span>{{ t('language') }}</span>
+        <select [(ngModel)]="locale" aria-label="Language">
+          <option value="en">English</option>
+          <option value="it">Italiano</option>
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <main class="page">
+    <router-outlet></router-outlet>
+  </main>
+</div>

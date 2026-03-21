@@ -1,0 +1,22 @@
+.list-card {
+  cursor: pointer;
+}
+
+.list-card strong,
+.mini-card strong {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.filter-card {
+  cursor: pointer;
+}
+
+.muted {
+  line-height: 1.5;
+}
+
+.toolbar input,
+.toolbar select {
+  min-width: 12rem;
+}
