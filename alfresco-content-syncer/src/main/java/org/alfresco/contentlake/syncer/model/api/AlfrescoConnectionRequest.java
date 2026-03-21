@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.model.api;
 
 public interface AlfrescoConnectionRequest {
 
@@ -18,3 +18,5 @@ public interface AlfrescoConnectionRequest {
         return sanitizedBaseUrl() + "/api/-default-/public/authentication/versions/1";
     }
 }
+
+

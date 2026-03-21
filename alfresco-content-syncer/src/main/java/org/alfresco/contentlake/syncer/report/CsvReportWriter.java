@@ -1,7 +1,7 @@
-package org.alfresco.contentlake.syncer.report;
+﻿package org.alfresco.contentlake.syncer.report;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.alfresco.contentlake.syncer.model.SyncItemResult;
+import org.alfresco.contentlake.syncer.model.SyncItemResultDTO;
 import org.alfresco.contentlake.syncer.model.SyncReport;
 
 @ApplicationScoped
@@ -31,7 +31,7 @@ public class CsvReportWriter {
 
         csv.append("\n");
         csv.append("details,path,operation,outcome,sizeInBytes,remoteNodeId,message\n");
-        for (SyncItemResult item : report.getItems()) {
+        for (SyncItemResultDTO item : report.getItems()) {
             csv.append("details,")
                     .append(cell(item.getPath())).append(',')
                     .append(cell(item.getOperation())).append(',')
@@ -59,3 +59,4 @@ public class CsvReportWriter {
         return '"' + value.replace("\"", "\"\"") + '"';
     }
 }
+

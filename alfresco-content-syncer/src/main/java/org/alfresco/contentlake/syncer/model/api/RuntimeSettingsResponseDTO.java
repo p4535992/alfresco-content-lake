@@ -1,6 +1,6 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.model.api;
 
-public record RuntimeSettingsResponse(
+public record RuntimeSettingsResponseDTO(
         int httpPort,
         boolean openBrowserOnStartup,
         String dataStorageRoot,
@@ -12,3 +12,5 @@ public record RuntimeSettingsResponse(
         boolean restartRequired
 ) {
 }
+
+

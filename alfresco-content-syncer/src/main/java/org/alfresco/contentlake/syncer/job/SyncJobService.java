@@ -1,10 +1,10 @@
-package org.alfresco.contentlake.syncer.job;
+﻿package org.alfresco.contentlake.syncer.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.api.StartSyncRequest;
-import org.alfresco.contentlake.syncer.api.JobRunrSummaryResponse;
+import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
+import org.alfresco.contentlake.syncer.model.api.JobRunrSummaryResponseDTO;
 import org.alfresco.contentlake.syncer.model.SyncJob;
 import org.alfresco.contentlake.syncer.model.SyncJobStatus;
 import org.alfresco.contentlake.syncer.model.SyncReport;
@@ -50,7 +50,7 @@ public class SyncJobService {
     @ConfigProperty(name = "syncer.report-store.enabled", defaultValue = "true")
     boolean reportStoreEnabled;
 
-    public SyncJob start(StartSyncRequest request) {
+    public SyncJob start(StartSyncRequestDTO request) {
         String jobId = UUID.randomUUID().toString();
         request.applyDefaultReportOutput(jobId);
         request.validate();
@@ -63,6 +63,7 @@ public class SyncJobService {
                 request.dryRun,
                 request.deleteRemoteMissing
         );
+        job.setForceNewVersion(request.forceNewVersion);
 
         syncJobRequestStore.save(jobId, request);
         String jobRunrId = String.valueOf(jobRequestScheduler.create(JobBuilder.aJob()
@@ -72,12 +73,13 @@ public class SyncJobService {
         job.setJobRunrId(jobRunrId);
         syncJobRepository.save(job);
         LOG.infof(
-                "Queued JobRunr sync job %s jobRunrId=%s localRoot=%s remoteRoot=%s reportOutput=%s",
+                "Queued JobRunr sync job %s jobRunrId=%s localRoot=%s remoteRoot=%s reportOutput=%s forceNewVersion=%s",
                 jobId,
                 jobRunrId,
                 request.localRootPath(),
                 request.remoteRootNodeId,
-                request.reportOutputPath()
+                request.reportOutputPath(),
+                request.forceNewVersion
         );
         return job;
     }
@@ -95,9 +97,9 @@ public class SyncJobService {
                 .toList();
     }
 
-    public JobRunrSummaryResponse jobRunrSummary() {
+    public JobRunrSummaryResponseDTO jobRunrSummary() {
         JobStats stats = storageProvider.getJobStats();
-        return new JobRunrSummaryResponse(
+        return new JobRunrSummaryResponseDTO(
                 stats.getTotal(),
                 stats.getAwaiting(),
                 stats.getScheduled(),
@@ -112,7 +114,7 @@ public class SyncJobService {
         );
     }
 
-    public void markRunning(String jobId, StartSyncRequest request) {
+    public void markRunning(String jobId, StartSyncRequestDTO request) {
         SyncJob job = requireJob(jobId);
         job.markRunning();
         job.setErrorMessage(null);
@@ -122,6 +124,7 @@ public class SyncJobService {
                 request.dryRun,
                 request.deleteRemoteMissing
         ));
+        job.setForceNewVersion(request.forceNewVersion);
         syncJobRepository.save(job);
         LOG.infof("Sync job %s is running", jobId);
     }
@@ -140,7 +143,7 @@ public class SyncJobService {
         LOG.infof("Sync job %s completed", jobId);
     }
 
-    public void markFailed(String jobId, StartSyncRequest request, Exception error, SyncReport partialReport) {
+    public void markFailed(String jobId, StartSyncRequestDTO request, Exception error, SyncReport partialReport) {
         SyncJob job = requireJob(jobId);
         SyncReport failureReport = partialReport != null
                 ? snapshotReport(partialReport)
@@ -208,3 +211,4 @@ public class SyncJobService {
         }
     }
 }
+

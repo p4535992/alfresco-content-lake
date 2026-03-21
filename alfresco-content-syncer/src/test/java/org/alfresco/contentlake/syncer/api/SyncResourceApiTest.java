@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.api;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 
 @QuarkusTest
@@ -43,6 +45,26 @@ class SyncResourceApiTest {
                   ]
                 }
                 """, "details,\"contracts/a.pdf\",\"upload-file\",\"UPLOADED\",128,\"node-1\",\"a.pdf\"");
+
+        SyncReport failedReport = new SyncReport("D:/failed-data", "remote-failed", false, false);
+        failedReport.recordItem("contracts/b.pdf", "upload-file", "FAILED", 64L, null, "upload failed");
+        failedReport.complete();
+        SyncJob failedJob = new SyncJob("job-report-failed", "D:/failed-data", "remote-failed", "D:/reports/job-report-failed.csv", false, false);
+        failedJob.markFailed("upload failed", failedReport);
+        syncJobRepository.save(failedJob);
+        syncReportArchiveRepository.save("job-report-failed", """
+                {
+                  "localRoot": "D:/failed-data",
+                  "remoteRootNodeId": "remote-failed",
+                  "items": [
+                    {
+                      "path": "contracts/b.pdf",
+                      "operation": "upload-file",
+                      "outcome": "FAILED"
+                    }
+                  ]
+                }
+                """, "details,\"contracts/b.pdf\",\"upload-file\",\"FAILED\",64,\"\",\"upload failed\"");
     }
 
     @Test
@@ -57,4 +79,31 @@ class SyncResourceApiTest {
                 .body("items[0].path", equalTo("contracts/a.pdf"))
                 .body("items[0].outcome", equalTo("UPLOADED"));
     }
+
+    @Test
+    void downloadsArchivedCsvReport() {
+        given()
+                .when()
+                .get("/api/sync/jobs/job-report-json/report.csv")
+                .then()
+                .statusCode(200)
+                .contentType(containsString("text/csv"))
+                .body(containsString("contracts/a.pdf"))
+                .body(containsString("UPLOADED"));
+    }
+
+    @Test
+    void listsArchivedReports() {
+        given()
+                .when()
+                .get("/api/sync/reports")
+                .then()
+                .statusCode(200)
+                .body("$", hasSize(2))
+                .body("[0].jobId", equalTo("job-report-failed"))
+                .body("[0].status", equalTo("FAILED"))
+                .body("[1].jobId", equalTo("job-report-json"))
+                .body("[1].status", equalTo("COMPLETED"));
+    }
 }
+

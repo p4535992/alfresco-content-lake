@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.job;
+﻿package org.alfresco.contentlake.syncer.job;
 
 import org.jobrunr.jobs.lambdas.JobRequest;
 
@@ -26,3 +26,4 @@ public class SyncJobRunRequest implements JobRequest {
         return SyncJobRunRequestHandler.class;
     }
 }
+

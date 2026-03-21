@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.service;
+﻿package org.alfresco.contentlake.syncer.service;
 
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -43,3 +43,4 @@ public class RuntimeDirectoryInitializer {
         }
     }
 }
+

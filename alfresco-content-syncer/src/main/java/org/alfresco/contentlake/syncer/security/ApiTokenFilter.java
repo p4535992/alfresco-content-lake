@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.security;
+﻿package org.alfresco.contentlake.syncer.security;
 
 import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
@@ -46,3 +46,4 @@ public class ApiTokenFilter implements ContainerRequestFilter {
         }
     }
 }
+

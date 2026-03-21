@@ -142,6 +142,7 @@
                                 <configuration>
                                     <target>
                                         <delete dir="${project.basedir}/dist/windows/AlfrescoContentSyncer" quiet="true"/>
+                                        <delete file="${project.basedir}/dist/windows/AlfrescoContentSyncer.zip" quiet="true"/>
                                         <mkdir dir="${project.build.directory}/jpackage-input"/>
                                         <copy file="${project.build.directory}/${project.build.finalName}-runner.jar"
                                               tofile="${project.build.directory}/jpackage-input/${project.build.finalName}-runner.jar"
@@ -171,6 +172,9 @@
                                         </exec>
                                         <mkdir dir="${project.basedir}/dist/windows/AlfrescoContentSyncer/config"/>
                                         <touch file="${project.basedir}/dist/windows/AlfrescoContentSyncer/config/application.properties"/>
+                                        <zip destfile="${project.basedir}/dist/windows/AlfrescoContentSyncer.zip">
+                                            <fileset dir="${project.basedir}/dist/windows" includes="AlfrescoContentSyncer/**"/>
+                                        </zip>
                                     </target>
                                 </configuration>
                             </execution>

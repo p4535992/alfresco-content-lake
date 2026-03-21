@@ -1,6 +1,6 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.model.api;
 
-public record JobRunrSummaryResponse(
+public record JobRunrSummaryResponseDTO(
         long total,
         long awaiting,
         long scheduled,
@@ -14,3 +14,5 @@ public record JobRunrSummaryResponse(
         int backgroundJobServers
 ) {
 }
+
+

@@ -1,14 +1,15 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.model.api;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class StartSyncRequest extends AlfrescoConnectionPayload {
+public class StartSyncRequestDTO extends AlfrescoConnectionPayloadDTO {
 
     public String localRoot;
     public String remoteRootNodeId;
     public boolean dryRun;
     public boolean deleteRemoteMissing;
+    public boolean forceNewVersion;
     public String reportOutput;
 
     public void validate() {
@@ -48,3 +49,5 @@ public class StartSyncRequest extends AlfrescoConnectionPayload {
                 .toString();
     }
 }
+
+

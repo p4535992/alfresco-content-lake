@@ -1,13 +1,13 @@
-package org.alfresco.contentlake.syncer.client;
+﻿package org.alfresco.contentlake.syncer.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.api.AlfrescoConnectionStatusResponse;
-import org.alfresco.contentlake.syncer.api.AlfrescoConnectionRequest;
-import org.alfresco.contentlake.syncer.api.AlfrescoSiteInfo;
-import org.alfresco.contentlake.syncer.model.RemoteNode;
+import org.alfresco.contentlake.syncer.model.api.AlfrescoConnectionStatusResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.AlfrescoConnectionRequest;
+import org.alfresco.contentlake.syncer.model.api.AlfrescoSiteInfoDTO;
+import org.alfresco.contentlake.syncer.model.RemoteNodeDTO;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
@@ -40,7 +40,7 @@ public class AlfrescoHttpClient {
 
     private final HttpClient httpClient = HttpClient.newBuilder().build();
 
-    public RemoteNode getNode(AlfrescoConnectionRequest request, String nodeId) {
+    public RemoteNodeDTO getNode(AlfrescoConnectionRequest request, String nodeId) {
         return withRetry(() -> {
             HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(nodeId)))
                     .GET()
@@ -49,7 +49,7 @@ public class AlfrescoHttpClient {
         });
     }
 
-    public AlfrescoConnectionStatusResponse verifyConnection(AlfrescoConnectionRequest request) {
+    public AlfrescoConnectionStatusResponseDTO verifyConnection(AlfrescoConnectionRequest request) {
         return withRetry(() -> {
             if (request.ticket() == null || request.ticket().isBlank()) {
                 createTicket(request.username(), request.password(), request.authenticationApiBaseUrl());
@@ -65,21 +65,21 @@ public class AlfrescoHttpClient {
                 String firstName = textOrNull(entry.get("firstName"));
                 String lastName = textOrNull(entry.get("lastName"));
                 String displayName = ((firstName == null ? "" : firstName) + " " + (lastName == null ? "" : lastName)).trim();
-                return new AlfrescoConnectionStatusResponse(userId, displayName.isBlank() ? userId : displayName);
+                return new AlfrescoConnectionStatusResponseDTO(userId, displayName.isBlank() ? userId : displayName);
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to parse Alfresco response", e);
             }
         });
     }
 
-    public List<AlfrescoSiteInfo> listSites(AlfrescoConnectionRequest request) {
+    public List<AlfrescoSiteInfoDTO> listSites(AlfrescoConnectionRequest request) {
         return withRetry(() -> {
-            List<AlfrescoSiteInfo> sites = new ArrayList<>();
+            List<AlfrescoSiteInfoDTO> sites = new ArrayList<>();
             int skipCount = 0;
             while (true) {
                 URI uri = publicUri(request, "/sites?skipCount=" + skipCount + "&maxItems=" + PAGE_SIZE);
                 HttpRequest httpRequest = requestBuilder(request, uri).GET().build();
-                List<AlfrescoSiteInfo> page = parseSiteEntries(send(httpRequest, 200));
+                List<AlfrescoSiteInfoDTO> page = parseSiteEntries(send(httpRequest, 200));
                 sites.addAll(page);
                 if (page.size() < PAGE_SIZE) {
                     return sites;
@@ -89,7 +89,7 @@ public class AlfrescoHttpClient {
         });
     }
 
-    public AlfrescoSiteInfo getSite(AlfrescoConnectionRequest request, String siteId) {
+    public AlfrescoSiteInfoDTO getSite(AlfrescoConnectionRequest request, String siteId) {
         return withRetry(() -> {
             HttpRequest httpRequest = requestBuilder(request, publicUri(request, "/sites/" + encode(siteId)))
                     .GET()
@@ -122,15 +122,15 @@ public class AlfrescoHttpClient {
         });
     }
 
-    public List<RemoteNode> listChildren(AlfrescoConnectionRequest request, String nodeId) {
+    public List<RemoteNodeDTO> listChildren(AlfrescoConnectionRequest request, String nodeId) {
         return withRetry(() -> {
-            List<RemoteNode> children = new ArrayList<>();
+            List<RemoteNodeDTO> children = new ArrayList<>();
             int skipCount = 0;
             while (true) {
                 URI uri = nodeUri(request,
                         "/nodes/" + encode(nodeId) + "/children?skipCount=" + skipCount + "&maxItems=" + PAGE_SIZE + "&include=properties");
                 HttpRequest httpRequest = requestBuilder(request, uri).GET().build();
-                List<RemoteNode> page = parseEntries(send(httpRequest, 200));
+                List<RemoteNodeDTO> page = parseEntries(send(httpRequest, 200));
                 children.addAll(page);
                 if (page.size() < PAGE_SIZE) {
                     return children;
@@ -140,7 +140,7 @@ public class AlfrescoHttpClient {
         });
     }
 
-    public RemoteNode createFolder(AlfrescoConnectionRequest request, String parentNodeId, String folderName) {
+    public RemoteNodeDTO createFolder(AlfrescoConnectionRequest request, String parentNodeId, String folderName) {
         return withRetry(() -> {
             String payload = "{" +
                     "\"name\":\"" + escapeJson(folderName) + "\"," +
@@ -156,7 +156,7 @@ public class AlfrescoHttpClient {
         });
     }
 
-    public RemoteNode uploadFile(AlfrescoConnectionRequest request, String parentNodeId, Path file) {
+    public RemoteNodeDTO uploadFile(AlfrescoConnectionRequest request, String parentNodeId, Path file) {
         return withRetry(() -> {
             try {
                 String boundary = "----alfresco-syncer-" + UUID.randomUUID();
@@ -185,10 +185,18 @@ public class AlfrescoHttpClient {
         });
     }
 
-    public RemoteNode updateFileContent(AlfrescoConnectionRequest request, String nodeId, Path file) {
+    public RemoteNodeDTO updateFileContent(AlfrescoConnectionRequest request, String nodeId, Path file) {
+        return updateFileContent(request, nodeId, file, null);
+    }
+
+    public RemoteNodeDTO updateFileContent(AlfrescoConnectionRequest request, String nodeId, Path file, String versionComment) {
         return withRetry(() -> {
             try {
-                HttpRequest httpRequest = requestBuilder(request, nodeUri(request, "/nodes/" + encode(nodeId) + "/content?majorVersion=false"))
+                String query = "/nodes/" + encode(nodeId) + "/content?majorVersion=false";
+                if (versionComment != null && !versionComment.isBlank()) {
+                    query += "&comment=" + encode(versionComment);
+                }
+                HttpRequest httpRequest = requestBuilder(request, nodeUri(request, query))
                         .header("Content-Type", probeMimeType(file))
                         .header("Content-Disposition", contentDisposition(file.getFileName().toString()))
                         .PUT(HttpRequest.BodyPublishers.ofFile(file))
@@ -253,7 +261,7 @@ public class AlfrescoHttpClient {
         }
     }
 
-    private RemoteNode parseEntry(String body) {
+    private RemoteNodeDTO parseEntry(String body) {
         try {
             JsonNode root = objectMapper.readTree(body);
             return toRemoteNode(root.path("entry"));
@@ -262,11 +270,11 @@ public class AlfrescoHttpClient {
         }
     }
 
-    private List<RemoteNode> parseEntries(String body) {
+    private List<RemoteNodeDTO> parseEntries(String body) {
         try {
             JsonNode root = objectMapper.readTree(body);
             JsonNode entries = root.path("list").path("entries");
-            List<RemoteNode> nodes = new ArrayList<>();
+            List<RemoteNodeDTO> nodes = new ArrayList<>();
             if (!entries.isArray()) {
                 return nodes;
             }
@@ -279,11 +287,11 @@ public class AlfrescoHttpClient {
         }
     }
 
-    private List<AlfrescoSiteInfo> parseSiteEntries(String body) {
+    private List<AlfrescoSiteInfoDTO> parseSiteEntries(String body) {
         try {
             JsonNode root = objectMapper.readTree(body);
             JsonNode entries = root.path("list").path("entries");
-            List<AlfrescoSiteInfo> sites = new ArrayList<>();
+            List<AlfrescoSiteInfoDTO> sites = new ArrayList<>();
             if (!entries.isArray()) {
                 return sites;
             }
@@ -296,18 +304,18 @@ public class AlfrescoHttpClient {
         }
     }
 
-    private AlfrescoSiteInfo toSiteInfo(JsonNode entryNode) {
-        return new AlfrescoSiteInfo(
+    private AlfrescoSiteInfoDTO toSiteInfo(JsonNode entryNode) {
+        return new AlfrescoSiteInfoDTO(
                 textOrNull(entryNode.get("id")),
                 textOrNull(entryNode.get("title")),
                 textOrNull(entryNode.get("description"))
         );
     }
 
-    private RemoteNode toRemoteNode(JsonNode entryNode) {
+    private RemoteNodeDTO toRemoteNode(JsonNode entryNode) {
         JsonNode contentNode = entryNode.path("content");
         String modifiedAt = textOrNull(entryNode.get("modifiedAt"));
-        return new RemoteNode(
+        return new RemoteNodeDTO(
                 textOrNull(entryNode.get("id")),
                 textOrNull(entryNode.get("name")),
                 entryNode.path("isFolder").asBoolean(false),
@@ -414,3 +422,4 @@ public class AlfrescoHttpClient {
         T get();
     }
 }
+

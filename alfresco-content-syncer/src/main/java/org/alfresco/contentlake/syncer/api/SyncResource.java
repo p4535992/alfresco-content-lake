@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.api;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -12,12 +12,14 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.alfresco.contentlake.syncer.job.SyncJobService;
 import org.alfresco.contentlake.syncer.job.SyncReportArchiveRepository;
-import org.alfresco.contentlake.syncer.api.JobRunrSummaryResponse;
+import org.alfresco.contentlake.syncer.model.api.JobRunrSummaryResponseDTO;
 import org.alfresco.contentlake.syncer.model.SyncJob;
 import org.alfresco.contentlake.syncer.report.CsvReportWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 
 @Path("/api/sync")
 @Produces(MediaType.APPLICATION_JSON)
@@ -54,8 +56,28 @@ public class SyncResource {
 
     @GET
     @Path("/jobrunr/summary")
-    public JobRunrSummaryResponse jobRunrSummary() {
+    public JobRunrSummaryResponseDTO jobRunrSummary() {
         return syncJobService.jobRunrSummary();
+    }
+
+    @GET
+    @Path("/reports")
+    public List<SyncReportHistoryEntryDTO> listReports() {
+        return syncJobService.list().stream()
+                .filter(job -> job.getReport() != null)
+                .sorted(Comparator
+                        .comparing((SyncJob job) -> job.getCompletedAt() != null ? job.getCompletedAt() : job.getCreatedAt())
+                        .reversed())
+                .map(job -> new SyncReportHistoryEntryDTO(
+                        job.getJobId(),
+                        String.valueOf(job.getStatus()),
+                        job.getLocalRoot(),
+                        job.getRemoteRootNodeId(),
+                        job.getReportOutput(),
+                        job.getCreatedAt(),
+                        job.getCompletedAt()
+                ))
+                .toList();
     }
 
     @GET
@@ -106,7 +128,7 @@ public class SyncResource {
 
     @POST
     @Path("/jobs")
-    public Response startJob(StartSyncRequest request) {
+    public Response startJob(StartSyncRequestDTO request) {
         try {
             SyncJob job = syncJobService.start(request);
             return Response.status(Response.Status.ACCEPTED).entity(job).build();
@@ -117,3 +139,4 @@ public class SyncResource {
         }
     }
 }
+

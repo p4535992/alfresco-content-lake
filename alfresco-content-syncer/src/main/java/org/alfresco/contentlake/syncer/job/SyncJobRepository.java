@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.job;
+﻿package org.alfresco.contentlake.syncer.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -180,3 +180,4 @@ public class SyncJobRepository {
         return instant != null ? Timestamp.from(instant) : null;
     }
 }
+

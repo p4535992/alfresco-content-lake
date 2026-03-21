@@ -335,6 +335,8 @@ Default behavior:
 - uploads missing files
 - updates existing files when `size` differs or local `lastModified` is newer than Alfresco `modifiedAt`
 - uses a persisted SHA-256 manifest to avoid false updates when only local timestamps drift
+- tracks successfully transferred files locally and skips them on later runs when the checksum is unchanged
+- supports a forced re-upload mode that creates a new Alfresco version for an existing remote file with the same folder path and name
 - returns a live JSON report via REST and a readable progress/report view in the UI
 - writes CSV when `reportOutput` ends with `.csv`; otherwise writes JSON plus a companion `.csv`
 - does not delete remote nodes unless explicitly enabled
@@ -361,6 +363,7 @@ Windows packaged app:
 mvn -pl alfresco-content-syncer -am clean package -Pwindows-app
 # output:
 #   alfresco-content-syncer\dist\windows\AlfrescoContentSyncer\AlfrescoContentSyncer.exe
+#   alfresco-content-syncer\dist\windows\AlfrescoContentSyncer.zip
 ```
 
 UI:

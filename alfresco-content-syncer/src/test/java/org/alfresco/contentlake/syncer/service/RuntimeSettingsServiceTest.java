@@ -1,7 +1,7 @@
-package org.alfresco.contentlake.syncer.service;
+﻿package org.alfresco.contentlake.syncer.service;
 
-import org.alfresco.contentlake.syncer.api.RuntimeSettingsResponse;
-import org.alfresco.contentlake.syncer.api.UpdateRuntimeSettingsRequest;
+import org.alfresco.contentlake.syncer.model.api.RuntimeSettingsResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.UpdateRuntimeSettingsRequestDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -29,12 +29,12 @@ class RuntimeSettingsServiceTest {
         service.dataDir = tempDir.resolve(".syncer-data").toString();
         service.jobrunrDataDir = tempDir.resolve("data").toString();
 
-        UpdateRuntimeSettingsRequest request = new UpdateRuntimeSettingsRequest();
+        UpdateRuntimeSettingsRequestDTO request = new UpdateRuntimeSettingsRequestDTO();
         request.httpPort = 9191;
         request.openBrowserOnStartup = false;
         request.dataStorageRoot = tempDir.resolve("portable-data").toString();
 
-        RuntimeSettingsResponse response = service.save(request);
+        RuntimeSettingsResponseDTO response = service.save(request);
 
         Path configFile = tempDir.resolve("config").resolve("application.properties");
         assertTrue(Files.exists(configFile));
@@ -60,7 +60,7 @@ class RuntimeSettingsServiceTest {
         service.dataDir = tempDir.resolve(".syncer-data").toString();
         service.jobrunrDataDir = tempDir.resolve("data").toString();
 
-        RuntimeSettingsResponse before = service.load();
+        RuntimeSettingsResponseDTO before = service.load();
         assertFalse(before.externalConfigPresent());
     }
 
@@ -69,7 +69,7 @@ class RuntimeSettingsServiceTest {
         RuntimeSettingsService service = new RuntimeSettingsService();
         service.runtimeRoot = tempDir.toString();
 
-        UpdateRuntimeSettingsRequest request = new UpdateRuntimeSettingsRequest();
+        UpdateRuntimeSettingsRequestDTO request = new UpdateRuntimeSettingsRequestDTO();
         request.httpPort = 70000;
         request.openBrowserOnStartup = true;
         request.dataStorageRoot = tempDir.toString();
@@ -78,3 +78,4 @@ class RuntimeSettingsServiceTest {
         assertTrue(error.getMessage().contains("httpPort"));
     }
 }
+

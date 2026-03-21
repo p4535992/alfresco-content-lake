@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.service;
+﻿package org.alfresco.contentlake.syncer.service;
 
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -98,3 +98,4 @@ public class StartupBrowserLauncher {
         return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     }
 }
+

@@ -1,8 +1,8 @@
-package org.alfresco.contentlake.syncer.service;
+﻿package org.alfresco.contentlake.syncer.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.alfresco.contentlake.syncer.api.RuntimeSettingsResponse;
-import org.alfresco.contentlake.syncer.api.UpdateRuntimeSettingsRequest;
+import org.alfresco.contentlake.syncer.model.api.RuntimeSettingsResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.UpdateRuntimeSettingsRequestDTO;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
@@ -35,9 +35,9 @@ public class RuntimeSettingsService {
     @ConfigProperty(name = "syncer.jobrunr.data-dir")
     String jobrunrDataDir;
 
-    public RuntimeSettingsResponse load() {
+    public RuntimeSettingsResponseDTO load() {
         Path configFile = configFilePath();
-        return new RuntimeSettingsResponse(
+        return new RuntimeSettingsResponseDTO(
                 httpPort,
                 openBrowserOnStartup,
                 normalizePath(dataStorageRoot),
@@ -50,7 +50,7 @@ public class RuntimeSettingsService {
         );
     }
 
-    public RuntimeSettingsResponse save(UpdateRuntimeSettingsRequest request) {
+    public RuntimeSettingsResponseDTO save(UpdateRuntimeSettingsRequestDTO request) {
         if (request == null) {
             throw new IllegalArgumentException("Settings payload is required");
         }
@@ -80,7 +80,7 @@ public class RuntimeSettingsService {
             throw new IllegalStateException("Failed to write runtime settings to " + configFile, e);
         }
 
-        return new RuntimeSettingsResponse(
+        return new RuntimeSettingsResponseDTO(
                 request.httpPort,
                 request.openBrowserOnStartup,
                 normalizePath(storageRoot.toString()),
@@ -105,3 +105,4 @@ public class RuntimeSettingsService {
         return value.replace('\\', '/');
     }
 }
+

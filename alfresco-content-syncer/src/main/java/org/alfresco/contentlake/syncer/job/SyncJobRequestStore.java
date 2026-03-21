@@ -1,10 +1,10 @@
-package org.alfresco.contentlake.syncer.job;
+﻿package org.alfresco.contentlake.syncer.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.api.StartSyncRequest;
+import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.jboss.logging.Logger;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -39,7 +39,7 @@ public class SyncJobRequestStore {
         importLegacyRequests();
     }
 
-    public void save(String jobId, StartSyncRequest request) {
+    public void save(String jobId, StartSyncRequestDTO request) {
         String sql = """
                 MERGE INTO sync_job_request (
                     job_id,
@@ -60,7 +60,7 @@ public class SyncJobRequestStore {
         }
     }
 
-    public StartSyncRequest load(String jobId) {
+    public StartSyncRequestDTO load(String jobId) {
         String sql = "SELECT payload_json FROM sync_job_request WHERE job_id = ?";
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -69,7 +69,7 @@ public class SyncJobRequestStore {
                 if (!resultSet.next()) {
                     throw new IllegalStateException("Sync job request not found for " + jobId);
                 }
-                return objectMapper.readValue(resultSet.getString("payload_json"), StartSyncRequest.class);
+                return objectMapper.readValue(resultSet.getString("payload_json"), StartSyncRequestDTO.class);
             }
         } catch (SQLException | IOException e) {
             throw new IllegalStateException("Failed to read sync job request " + jobId, e);
@@ -104,7 +104,7 @@ public class SyncJobRequestStore {
                         String fileName = path.getFileName().toString();
                         String jobId = fileName.substring(0, fileName.length() - ".json".length());
                         try {
-                            StartSyncRequest request = objectMapper.readValue(path.toFile(), StartSyncRequest.class);
+                            StartSyncRequestDTO request = objectMapper.readValue(path.toFile(), StartSyncRequestDTO.class);
                             save(jobId, request);
                             LOG.infof("Imported legacy sync job request %s from %s", jobId, path);
                         } catch (IOException e) {
@@ -120,3 +120,4 @@ public class SyncJobRequestStore {
         return Path.of(dataDir).toAbsolutePath().normalize().resolve("requests");
     }
 }
+

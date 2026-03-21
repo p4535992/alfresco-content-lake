@@ -1,8 +1,8 @@
-package org.alfresco.contentlake.syncer.model;
+﻿package org.alfresco.contentlake.syncer.model;
 
 import java.time.Instant;
 
-public record RemoteNode(
+public record RemoteNodeDTO(
         String id,
         String name,
         boolean folder,
@@ -11,3 +11,5 @@ public record RemoteNode(
         Instant modifiedAt
 ) {
 }
+
+

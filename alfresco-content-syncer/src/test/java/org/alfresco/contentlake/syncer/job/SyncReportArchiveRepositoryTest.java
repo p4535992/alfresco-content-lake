@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.job;
+﻿package org.alfresco.contentlake.syncer.job;
 
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
@@ -33,3 +33,4 @@ class SyncReportArchiveRepositoryTest {
         assertTrue(repository.findCsv("missing").isEmpty());
     }
 }
+

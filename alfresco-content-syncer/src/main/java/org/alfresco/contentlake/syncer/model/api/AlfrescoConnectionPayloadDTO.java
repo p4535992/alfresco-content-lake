@@ -1,6 +1,6 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.model.api;
 
-public class AlfrescoConnectionPayload implements AlfrescoConnectionRequest {
+public class AlfrescoConnectionPayloadDTO implements AlfrescoConnectionRequest {
 
     public String alfrescoBaseUrl;
     public String username;
@@ -53,3 +53,5 @@ public class AlfrescoConnectionPayload implements AlfrescoConnectionRequest {
         return value == null || value.isBlank();
     }
 }
+
+

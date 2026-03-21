@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.service;
+﻿package org.alfresco.contentlake.syncer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -110,3 +110,4 @@ public class SyncStateStore {
         }
     }
 }
+

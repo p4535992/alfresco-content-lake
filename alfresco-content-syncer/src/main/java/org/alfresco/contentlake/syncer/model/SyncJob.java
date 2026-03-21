@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.model;
+﻿package org.alfresco.contentlake.syncer.model;
 
 import java.time.Instant;
 
@@ -11,6 +11,7 @@ public class SyncJob {
     private String reportOutput;
     private boolean dryRun;
     private boolean deleteRemoteMissing;
+    private boolean forceNewVersion;
     private Instant createdAt;
     private volatile Instant startedAt;
     private volatile Instant completedAt;
@@ -88,6 +89,14 @@ public class SyncJob {
         this.deleteRemoteMissing = deleteRemoteMissing;
     }
 
+    public boolean isForceNewVersion() {
+        return forceNewVersion;
+    }
+
+    public void setForceNewVersion(boolean forceNewVersion) {
+        this.forceNewVersion = forceNewVersion;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -154,3 +163,4 @@ public class SyncJob {
         completedAt = Instant.now();
     }
 }
+

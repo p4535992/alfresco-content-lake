@@ -1,6 +1,6 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.model.api;
 
-public class AlfrescoSiteBrowseRequest extends AlfrescoConnectionPayload {
+public class AlfrescoSiteBrowseRequestDTO extends AlfrescoConnectionPayloadDTO {
 
     public String siteId;
     public String folderNodeId;
@@ -12,3 +12,5 @@ public class AlfrescoSiteBrowseRequest extends AlfrescoConnectionPayload {
         }
     }
 }
+
+

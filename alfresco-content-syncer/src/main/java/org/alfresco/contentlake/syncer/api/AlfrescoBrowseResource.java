@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.api;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -9,7 +9,7 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.alfresco.contentlake.syncer.client.AlfrescoHttpClient;
-import org.alfresco.contentlake.syncer.model.RemoteNode;
+import org.alfresco.contentlake.syncer.model.RemoteNodeDTO;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ public class AlfrescoBrowseResource {
 
     @POST
     @Path("/connection/verify")
-    public AlfrescoConnectionStatusResponse verifyConnection(AlfrescoConnectionPayload request) {
+    public AlfrescoConnectionStatusResponseDTO verifyConnection(AlfrescoConnectionPayloadDTO request) {
         try {
             request.validateConnection();
             return alfrescoHttpClient.verifyConnection(request);
@@ -36,7 +36,7 @@ public class AlfrescoBrowseResource {
 
     @POST
     @Path("/sites")
-    public List<AlfrescoSiteInfo> listSites(AlfrescoConnectionPayload request) {
+    public List<AlfrescoSiteInfoDTO> listSites(AlfrescoConnectionPayloadDTO request) {
         try {
             request.validateConnection();
             return alfrescoHttpClient.listSites(request);
@@ -49,20 +49,20 @@ public class AlfrescoBrowseResource {
 
     @POST
     @Path("/sites/browse")
-    public AlfrescoSiteFolderBrowseResponse browseSiteFolders(AlfrescoSiteBrowseRequest request) {
+    public AlfrescoSiteFolderBrowseResponseDTO browseSiteFolders(AlfrescoSiteBrowseRequestDTO request) {
         try {
             request.validate();
-            AlfrescoSiteInfo site = alfrescoHttpClient.getSite(request, request.siteId);
+            AlfrescoSiteInfoDTO site = alfrescoHttpClient.getSite(request, request.siteId);
             String documentLibraryNodeId = alfrescoHttpClient.getDocumentLibraryNodeId(request, request.siteId);
             String currentNodeId = request.folderNodeId == null || request.folderNodeId.isBlank()
                     ? documentLibraryNodeId
                     : request.folderNodeId;
-            RemoteNode documentLibrary = alfrescoHttpClient.getNode(request, documentLibraryNodeId);
-            RemoteNode currentNode = alfrescoHttpClient.getNode(request, currentNodeId);
-            List<RemoteNode> children = alfrescoHttpClient.listChildren(request, currentNodeId).stream()
-                    .filter(RemoteNode::folder)
+            RemoteNodeDTO documentLibrary = alfrescoHttpClient.getNode(request, documentLibraryNodeId);
+            RemoteNodeDTO currentNode = alfrescoHttpClient.getNode(request, currentNodeId);
+            List<RemoteNodeDTO> children = alfrescoHttpClient.listChildren(request, currentNodeId).stream()
+                    .filter(RemoteNodeDTO::folder)
                     .toList();
-            return new AlfrescoSiteFolderBrowseResponse(site, documentLibrary, currentNode, children);
+            return new AlfrescoSiteFolderBrowseResponseDTO(site, documentLibrary, currentNode, children);
         } catch (IllegalArgumentException e) {
             throw new WebApplicationException(e.getMessage(), Response.Status.BAD_REQUEST);
         } catch (IllegalStateException e) {
@@ -70,3 +70,4 @@ public class AlfrescoBrowseResource {
         }
     }
 }
+

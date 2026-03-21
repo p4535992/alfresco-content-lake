@@ -77,6 +77,10 @@
     .filter-grid {
       display: grid; gap: 10px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 14px;
     }
+    .section-head {
+      display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px;
+    }
+    .section-head .toolbar { flex: 1; justify-content: flex-end; }
     .filter-card {
       background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; cursor: pointer;
     }
@@ -149,6 +153,18 @@
     .status-chip.success { background: rgba(43, 122, 75, 0.12); color: var(--ok); border-color: rgba(43, 122, 75, 0.25); }
     .status-chip.progress { background: rgba(165, 91, 23, 0.12); color: var(--warn); border-color: rgba(165, 91, 23, 0.25); }
     .status-chip.error { background: rgba(161, 42, 42, 0.12); color: var(--err); border-color: rgba(161, 42, 42, 0.25); }
+    .reports-table-wrap {
+      max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: #fff;
+    }
+    table.report-history-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .report-history-table th, .report-history-table td {
+      padding: 10px 12px; border-bottom: 1px solid #eadfcf; vertical-align: top; text-align: left;
+    }
+    .report-history-table th { position: sticky; top: 0; background: #fbf5ea; z-index: 1; }
+    .report-history-table th.sortable { cursor: pointer; user-select: none; }
+    .report-history-table tr.clickable { cursor: pointer; }
+    .report-history-table td.actions-cell { white-space: nowrap; }
+    .report-history-table .ghost { padding: 8px 12px; }
     @media (max-width: 980px) {
       .hero, .grid, .split, .triple, .row.two { grid-template-columns: 1fr; }
       h1 { max-width: none; }
@@ -173,7 +189,7 @@
         </select>
       </div>
       <h3>Operational Notes</h3>
-      <p>Use <strong>dry run</strong> first. Files with the same name and the same size are skipped. If the report path is left empty, the server writes a CSV report in the current working directory with a generated filename.</p>
+      <p>Use <strong>dry run</strong> first. Successfully transferred files are tracked locally in embedded H2 and skipped on later runs when the local checksum is unchanged. Use <strong>Force new version sync</strong> to upload the same local file again as a new Alfresco version when a file with the same name already exists in the same remote folder. If the report path is left empty, the server writes a CSV report in the current working directory with a generated filename.</p>
     </div>
   </section>
 
@@ -270,6 +286,7 @@
       </div>
       <div style="margin-top: 14px;">
         <button id="startButton">Start sync job</button>
+        <button id="forceVersionButton" class="ghost" type="button">Force new version sync</button>
         <div id="message" class="message"></div>
       </div>
     </div>
@@ -277,7 +294,12 @@
 
   <section class="split">
     <div class="card">
-      <h2>Jobs</h2>
+      <div class="section-head">
+        <h2 id="jobsSectionTitle">Jobs</h2>
+        <div class="toolbar">
+          <input id="jobSearchInput" placeholder="Search by job id, local root or status" style="max-width: 360px;">
+        </div>
+      </div>
       <div id="jobFilterGrid" class="filter-grid">
         <div class="filter-card active" data-filter="all"><span>All</span><strong>0</strong></div>
         <div class="filter-card queued" data-filter="queued"><span>Queued</span><strong>0</strong></div>
@@ -296,6 +318,43 @@
       </div>
       <div id="meta" class="meta"></div>
       <div id="report" class="report">No job selected.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <div>
+        <h2 id="reportsSectionTitle">Reports</h2>
+        <div id="reportsSectionHelper" class="helper">Completed and failed jobs with archived CSV/JSON exports.</div>
+      </div>
+      <div class="toolbar">
+        <input id="reportSearchInput" placeholder="Search report history" style="max-width: 320px;">
+        <select id="reportStatusFilter" style="max-width: 180px;">
+          <option value="all">All statuses</option>
+          <option value="COMPLETED">Succeeded</option>
+          <option value="FAILED">Failed</option>
+        </select>
+        <input id="reportCompletedFrom" type="date" style="max-width: 190px;">
+        <button id="exportReportsCsvButton" class="ghost" type="button">Export report list CSV</button>
+        <button id="refreshReportsButton" class="ghost" type="button">Refresh reports</button>
+      </div>
+    </div>
+    <div class="reports-table-wrap">
+      <table class="report-history-table">
+        <thead>
+        <tr>
+          <th id="reportsHeaderCompleted" class="sortable" data-sort-key="completedAt">Completed</th>
+          <th id="reportsHeaderJobId" class="sortable" data-sort-key="jobId">Job Id</th>
+          <th id="reportsHeaderStatus" class="sortable" data-sort-key="status">Status</th>
+          <th id="reportsHeaderLocalRoot" class="sortable" data-sort-key="localRoot">Local Root</th>
+          <th id="reportsHeaderRemoteRoot" class="sortable" data-sort-key="remoteRootNodeId">Remote Root</th>
+          <th id="reportsHeaderActions">Actions</th>
+        </tr>
+        </thead>
+        <tbody id="reportsTableBody">
+        <tr><td colspan="6">No archived reports available.</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
@@ -379,6 +438,7 @@
   const metaEl = document.getElementById('meta');
   const messageEl = document.getElementById('message');
   const startButton = document.getElementById('startButton');
+  const forceVersionButton = document.getElementById('forceVersionButton');
   const downloadCsvButton = document.getElementById('downloadCsvButton');
   const downloadJsonButton = document.getElementById('downloadJsonButton');
   const openDashboardButton = document.getElementById('openDashboardButton');
@@ -411,6 +471,22 @@
   const jobrunrSummaryEl = document.getElementById('jobrunrSummary');
   const jobrunrSummaryHelperEl = document.getElementById('jobrunrSummaryHelper');
   const jobFilterGridEl = document.getElementById('jobFilterGrid');
+  const jobsSectionTitleEl = document.getElementById('jobsSectionTitle');
+  const jobSearchInputEl = document.getElementById('jobSearchInput');
+  const reportsSectionTitleEl = document.getElementById('reportsSectionTitle');
+  const reportsSectionHelperEl = document.getElementById('reportsSectionHelper');
+  const reportSearchInputEl = document.getElementById('reportSearchInput');
+  const reportStatusFilterEl = document.getElementById('reportStatusFilter');
+  const reportCompletedFromEl = document.getElementById('reportCompletedFrom');
+  const exportReportsCsvButton = document.getElementById('exportReportsCsvButton');
+  const refreshReportsButton = document.getElementById('refreshReportsButton');
+  const reportsTableBodyEl = document.getElementById('reportsTableBody');
+  const reportsHeaderCompletedEl = document.getElementById('reportsHeaderCompleted');
+  const reportsHeaderJobIdEl = document.getElementById('reportsHeaderJobId');
+  const reportsHeaderStatusEl = document.getElementById('reportsHeaderStatus');
+  const reportsHeaderLocalRootEl = document.getElementById('reportsHeaderLocalRoot');
+  const reportsHeaderRemoteRootEl = document.getElementById('reportsHeaderRemoteRoot');
+  const reportsHeaderActionsEl = document.getElementById('reportsHeaderActions');
   let selectedJobId = null;
   let pollHandle = null;
   let logsPollHandle = null;
@@ -424,12 +500,21 @@
   let currentSelectedJob = null;
   let currentJobRunrSummary = null;
   let currentJobs = [];
+  let currentReports = [];
   let activeJobFilter = 'all';
+  let jobSearchQuery = '';
+  let reportSearchQuery = '';
+  let reportStatusFilter = 'all';
+  let reportCompletedFrom = '';
+  let reportSortKey = 'completedAt';
+  let reportSortDirection = 'desc';
   let currentLocale = localStorage.getItem('syncer.locale') || 'en';
   let runtimeInfo = null;
 
   const i18n = {
     en: {
+      jobsTitle: 'Jobs',
+      jobsSearchPlaceholder: 'Search by job id, local root or status',
       transferTitle: 'File Transfer Status',
       transferHelper: 'The table shows the latest known state for each file in the selected job.',
       transferred: 'TRANSFERRED',
@@ -458,6 +543,9 @@
       jsonGenerating: 'Generating JSON download...',
       jsonDownloaded: 'JSON downloaded.',
       jsonFailed: 'JSON download failed',
+      forceVersionButton: 'Force new version sync',
+      forceVersionEnabled: 'Forcing a new Alfresco version for existing remote files...',
+      forceVersionAccepted: 'Forced version job {jobId} accepted.',
       queueSummaryTitle: 'Job Queue Summary',
       queueSummaryHelper: 'Live JobRunr counters from the embedded H2-backed queue.',
       queueEnqueued: 'Enqueued',
@@ -473,6 +561,26 @@
       jobFilterFailed: 'Failed',
       jobFilterCompleted: 'Succeeded',
       noJobsForFilter: 'No jobs for the selected filter.',
+      reportsTitle: 'Reports',
+      reportsHelper: 'Completed and failed jobs with archived CSV/JSON exports.',
+      reportsSearchPlaceholder: 'Search report history',
+      reportsStatusFilterAll: 'All statuses',
+      reportsStatusFilterCompleted: 'Succeeded',
+      reportsStatusFilterFailed: 'Failed',
+      reportsCompletedFrom: 'Completed from',
+      reportsExportCsv: 'Export report list CSV',
+      reportsCsvDownloaded: 'Report list CSV downloaded.',
+      reportsCsvEmpty: 'No report rows available for CSV export.',
+      reportsRefresh: 'Refresh reports',
+      reportsCompleted: 'Completed',
+      reportsJobId: 'Job Id',
+      reportsStatus: 'Status',
+      reportsLocalRoot: 'Local Root',
+      reportsRemoteRoot: 'Remote Root',
+      reportsActions: 'Actions',
+      reportsNone: 'No archived reports available.',
+      reportsRefreshFailed: 'Failed to load reports',
+      viewJob: 'View job',
       logsDirectory: 'Directory: {path}',
       logsNoneYet: 'No log files yet',
       logsNoEntries: 'No log entries available.',
@@ -482,6 +590,8 @@
       logsLoadSelectedFailed: 'Failed to load selected log file'
     },
     it: {
+      jobsTitle: 'Job',
+      jobsSearchPlaceholder: 'Cerca per job id, radice locale o stato',
       transferTitle: 'Stato Trasferimenti File',
       transferHelper: "La tabella mostra l'ultimo stato noto per ogni file del job selezionato.",
       transferred: 'TRASFERITO',
@@ -510,6 +620,9 @@
       jsonGenerating: 'Generazione download JSON...',
       jsonDownloaded: 'JSON scaricato.',
       jsonFailed: 'Download JSON fallito',
+      forceVersionButton: 'Forza nuova versione',
+      forceVersionEnabled: 'Forzatura di una nuova versione Alfresco per i file remoti esistenti...',
+      forceVersionAccepted: 'Job di versione forzata {jobId} accettato.',
       queueSummaryTitle: 'Riepilogo Coda Job',
       queueSummaryHelper: 'Contatori JobRunr in tempo reale dalla coda embedded basata su H2.',
       queueEnqueued: 'In coda',
@@ -525,6 +638,26 @@
       jobFilterFailed: 'Falliti',
       jobFilterCompleted: 'Completati',
       noJobsForFilter: 'Nessun job per il filtro selezionato.',
+      reportsTitle: 'Report',
+      reportsHelper: 'Job completati o falliti con export CSV/JSON archiviati.',
+      reportsSearchPlaceholder: 'Cerca nello storico report',
+      reportsStatusFilterAll: 'Tutti gli stati',
+      reportsStatusFilterCompleted: 'Completati',
+      reportsStatusFilterFailed: 'Falliti',
+      reportsCompletedFrom: 'Completato dal',
+      reportsExportCsv: 'Esporta CSV lista report',
+      reportsCsvDownloaded: 'CSV lista report scaricato.',
+      reportsCsvEmpty: 'Nessuna riga report disponibile per l\'export CSV.',
+      reportsRefresh: 'Aggiorna report',
+      reportsCompleted: 'Completato',
+      reportsJobId: 'Job Id',
+      reportsStatus: 'Stato',
+      reportsLocalRoot: 'Radice Locale',
+      reportsRemoteRoot: 'Radice Remota',
+      reportsActions: 'Azioni',
+      reportsNone: 'Nessun report archiviato disponibile.',
+      reportsRefreshFailed: 'Caricamento report fallito',
+      viewJob: 'Apri job',
       logsDirectory: 'Cartella: {path}',
       logsNoneYet: 'Nessun file di log disponibile',
       logsNoEntries: 'Nessuna entry di log disponibile.',
@@ -569,13 +702,14 @@
     };
   }
 
-  function jobPayload() {
+  function jobPayload(forceNewVersion = false) {
     return {
       ...connectionPayload(),
       localRoot: document.getElementById('localRoot').value.trim(),
       remoteRootNodeId: selectedRemoteFolderId,
       dryRun: document.getElementById('dryRun').checked,
       deleteRemoteMissing: document.getElementById('deleteRemoteMissing').checked,
+      forceNewVersion,
       reportOutput: document.getElementById('reportOutput').value.trim()
     };
   }
@@ -609,12 +743,34 @@
   }
 
   function applyLocale() {
+    jobsSectionTitleEl.textContent = t('jobsTitle');
+    jobSearchInputEl.placeholder = t('jobsSearchPlaceholder');
     transferSectionTitleEl.textContent = t('transferTitle');
     transferSectionHelperEl.textContent = t('transferHelper');
     jobrunrSummaryTitleEl.textContent = t('queueSummaryTitle');
     jobrunrSummaryHelperEl.textContent = t('queueSummaryHelper');
     openSettingsButton.textContent = t('settings');
+    forceVersionButton.textContent = t('forceVersionButton');
+    reportsSectionTitleEl.textContent = t('reportsTitle');
+    reportsSectionHelperEl.textContent = t('reportsHelper');
+    reportSearchInputEl.placeholder = t('reportsSearchPlaceholder');
+    reportCompletedFromEl.title = t('reportsCompletedFrom');
+    exportReportsCsvButton.textContent = t('reportsExportCsv');
+    refreshReportsButton.textContent = t('reportsRefresh');
+    reportsHeaderCompletedEl.textContent = t('reportsCompleted');
+    reportsHeaderJobIdEl.textContent = t('reportsJobId');
+    reportsHeaderStatusEl.textContent = t('reportsStatus');
+    reportsHeaderLocalRootEl.textContent = t('reportsLocalRoot');
+    reportsHeaderRemoteRootEl.textContent = t('reportsRemoteRoot');
+    reportsHeaderActionsEl.textContent = t('reportsActions');
+    reportStatusFilterEl.innerHTML = `
+      <option value="all">${escapeHtml(t('reportsStatusFilterAll'))}</option>
+      <option value="COMPLETED">${escapeHtml(t('reportsStatusFilterCompleted'))}</option>
+      <option value="FAILED">${escapeHtml(t('reportsStatusFilterFailed'))}</option>
+    `;
+    reportStatusFilterEl.value = reportStatusFilter;
     renderJobFilters(currentJobs);
+    renderReports(currentReports);
     if (!verifiedConnection) {
       setConnectionStatus(t('connectionNotVerified'), 'warn');
     }
@@ -845,11 +1001,40 @@
     });
   }
 
+  function updateReportsSortHeaders() {
+    const labels = {
+      completedAt: t('reportsCompleted'),
+      jobId: t('reportsJobId'),
+      status: t('reportsStatus'),
+      localRoot: t('reportsLocalRoot'),
+      remoteRootNodeId: t('reportsRemoteRoot')
+    };
+    [reportsHeaderCompletedEl, reportsHeaderJobIdEl, reportsHeaderStatusEl, reportsHeaderLocalRootEl, reportsHeaderRemoteRootEl].forEach(header => {
+      const key = header.dataset.sortKey;
+      const marker = key === reportSortKey ? (reportSortDirection === 'asc' ? ' ↑' : ' ↓') : '';
+      header.textContent = `${labels[key] || key}${marker}`;
+    });
+  }
+
   function filteredJobs(jobs) {
-    if (activeJobFilter === 'all') {
-      return jobs;
+    let filtered = jobs;
+    if (activeJobFilter !== 'all') {
+      filtered = filtered.filter(job => jobFilterKey(job) === activeJobFilter);
     }
-    return jobs.filter(job => jobFilterKey(job) === activeJobFilter);
+    if (!jobSearchQuery) {
+      return filtered;
+    }
+    const normalizedQuery = jobSearchQuery.toLowerCase();
+    return filtered.filter(job => {
+      const haystack = [
+        job.jobId,
+        job.localRoot,
+        job.remoteRootNodeId,
+        job.status,
+        job.reportOutput
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
   }
 
   function renderJobs(jobs) {
@@ -875,6 +1060,113 @@
     });
   }
 
+  function filteredReports(reports) {
+    const normalizedQuery = reportSearchQuery.toLowerCase();
+    return (reports || []).filter(entry => {
+      if (reportStatusFilter !== 'all' && String(entry.status || '').toUpperCase() !== reportStatusFilter) {
+        return false;
+      }
+      if (reportCompletedFrom) {
+        const completedValue = entry.completedAt || entry.createdAt;
+        if (!completedValue) {
+          return false;
+        }
+        const completedDay = new Date(completedValue).toISOString().slice(0, 10);
+        if (completedDay < reportCompletedFrom) {
+          return false;
+        }
+      }
+      if (!normalizedQuery) {
+        return true;
+      }
+      const haystack = [
+        entry.jobId,
+        entry.status,
+        entry.localRoot,
+        entry.remoteRootNodeId,
+        entry.reportOutput
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }
+
+  function sortedReports(reports) {
+    return [...reports].sort((left, right) => {
+      const leftValue = reportSortKey === 'completedAt'
+        ? (left.completedAt || left.createdAt || '')
+        : (left[reportSortKey] || '');
+      const rightValue = reportSortKey === 'completedAt'
+        ? (right.completedAt || right.createdAt || '')
+        : (right[reportSortKey] || '');
+      const comparison = String(leftValue).localeCompare(String(rightValue));
+      return reportSortDirection === 'asc' ? comparison : comparison * -1;
+    });
+  }
+
+  function renderReports(reports) {
+    currentReports = reports || [];
+    reportsTableBodyEl.innerHTML = '';
+    updateReportsSortHeaders();
+    const visibleReports = sortedReports(filteredReports(currentReports));
+    if (!visibleReports.length) {
+      reportsTableBodyEl.innerHTML = `<tr><td colspan="6">${escapeHtml(t('reportsNone'))}</td></tr>`;
+      return;
+    }
+
+    visibleReports.forEach(entry => {
+      const row = document.createElement('tr');
+      row.className = 'clickable';
+      row.innerHTML = `
+        <td>${escapeHtml(formatDate(entry.completedAt || entry.createdAt))}</td>
+        <td>${escapeHtml(entry.jobId)}</td>
+        <td>${escapeHtml(entry.status || '-')}</td>
+        <td>${escapeHtml(entry.localRoot || '-')}</td>
+        <td>${escapeHtml(entry.remoteRootNodeId || '-')}</td>
+        <td class="actions-cell">
+          <button class="ghost report-view-button" type="button">${escapeHtml(t('viewJob'))}</button>
+          <button class="ghost report-csv-button" type="button">CSV</button>
+          <button class="ghost report-json-button" type="button">JSON</button>
+        </td>
+      `;
+      row.querySelector('.report-view-button').addEventListener('click', async event => {
+        event.stopPropagation();
+        try {
+          selectedJobId = entry.jobId;
+          renderJobs(currentJobs);
+          await loadJob(entry.jobId);
+        } catch (error) {
+          setMessage(error.message || t('requestFailed'), 'err');
+        }
+      });
+      row.querySelector('.report-csv-button').addEventListener('click', async event => {
+        event.stopPropagation();
+        try {
+          await downloadCsv(entry.jobId);
+        } catch (error) {
+          setMessage(error.message || t('csvFailed'), 'err');
+        }
+      });
+      row.querySelector('.report-json-button').addEventListener('click', async event => {
+        event.stopPropagation();
+        try {
+          await downloadJson(entry.jobId);
+        } catch (error) {
+          setMessage(error.message || t('jsonFailed'), 'err');
+        }
+      });
+      row.addEventListener('click', async () => {
+        try {
+          selectedJobId = entry.jobId;
+          renderJobs(currentJobs);
+          await loadJob(entry.jobId);
+        } catch (error) {
+          setMessage(error.message || t('requestFailed'), 'err');
+        }
+      });
+      reportsTableBodyEl.appendChild(row);
+    });
+  }
+
   function renderJob(job) {
     if (!job) {
       metaEl.innerHTML = '';
@@ -893,6 +1185,7 @@
       <div><span>Status</span><strong>${job.status}</strong></div>
       <div><span>Dry run</span><strong>${job.dryRun}</strong></div>
       <div><span>Delete missing</span><strong>${job.deleteRemoteMissing}</strong></div>
+      <div><span>Force new version</span><strong>${job.forceNewVersion === true}</strong></div>
       <div><span>Remote root</span><strong>${job.remoteRootNodeId}</strong></div>
       <div><span>JobRunr job</span><strong>${job.jobRunrId || '-'}</strong></div>
       <div><span>Report output</span><strong>${job.reportOutput || '-'}</strong></div>
@@ -1114,7 +1407,7 @@
   }
 
   function escapeHtml(value) {
-    return value
+    return String(value ?? '')
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;');
@@ -1140,6 +1433,12 @@
     renderJobRunrSummary(summary);
   }
 
+  async function loadReports() {
+    const response = await apiFetch('/api/sync/reports');
+    const reports = await response.json();
+    renderReports(reports);
+  }
+
   function ensureLogsPolling() {
     if (logsPollHandle) {
       clearInterval(logsPollHandle);
@@ -1157,6 +1456,7 @@
     const response = await apiFetch('/api/sync/jobs');
     const jobs = await response.json();
     renderJobs(jobs);
+    await loadReports();
     await loadJobRunrSummary();
     if (!selectedJobId && jobs.length) {
       selectedJobId = jobs[0].jobId;
@@ -1296,6 +1596,39 @@
     URL.revokeObjectURL(url);
   }
 
+  function exportReportsCsv() {
+    const visibleReports = sortedReports(filteredReports(currentReports));
+    if (!visibleReports.length) {
+      throw new Error(t('reportsCsvEmpty'));
+    }
+    const rows = [
+      ['completedAt', 'jobId', 'status', 'localRoot', 'remoteRootNodeId', 'reportOutput']
+    ];
+    visibleReports.forEach(entry => {
+      rows.push([
+        entry.completedAt || entry.createdAt || '',
+        entry.jobId || '',
+        entry.status || '',
+        entry.localRoot || '',
+        entry.remoteRootNodeId || '',
+        entry.reportOutput || ''
+      ]);
+    });
+
+    const csv = rows
+      .map(row => row.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(','))
+      .join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'alfresco-content-syncer-report-history.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   document.getElementById('verifyConnectionButton').addEventListener('click', async () => {
     try {
       await verifyConnection();
@@ -1357,9 +1690,10 @@
     }
   });
 
-  startButton.addEventListener('click', async () => {
+  async function submitJob(forceNewVersion) {
     startButton.disabled = true;
-    setMessage('Submitting job...', 'warn');
+    forceVersionButton.disabled = true;
+    setMessage(forceNewVersion ? t('forceVersionEnabled') : 'Submitting job...', 'warn');
     try {
       if (!validateJobFields()) {
         return;
@@ -1367,18 +1701,27 @@
       const response = await apiFetch('/api/sync/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(jobPayload())
+        body: JSON.stringify(jobPayload(forceNewVersion))
       });
       const job = await response.json();
       selectedJobId = job.jobId;
-      setMessage(`Job ${job.jobId} accepted.`, 'ok');
+      setMessage(forceNewVersion ? t('forceVersionAccepted', { jobId: job.jobId }) : `Job ${job.jobId} accepted.`, 'ok');
       await loadJobs();
       await loadJob(job.jobId);
     } catch (error) {
       setMessage(error.message || t('requestFailed'), 'err');
     } finally {
       startButton.disabled = false;
+      forceVersionButton.disabled = false;
     }
+  }
+
+  startButton.addEventListener('click', async () => {
+    await submitJob(false);
+  });
+
+  forceVersionButton.addEventListener('click', async () => {
+    await submitJob(true);
   });
 
   downloadCsvButton.addEventListener('click', async () => {
@@ -1440,10 +1783,56 @@
   });
 
   autoRefreshLogsEl.addEventListener('change', () => ensureLogsPolling());
+  jobSearchInputEl.addEventListener('input', () => {
+    jobSearchQuery = jobSearchInputEl.value.trim();
+    renderJobs(currentJobs);
+  });
+  reportSearchInputEl.addEventListener('input', () => {
+    reportSearchQuery = reportSearchInputEl.value.trim();
+    renderReports(currentReports);
+  });
+  reportStatusFilterEl.addEventListener('change', () => {
+    reportStatusFilter = reportStatusFilterEl.value || 'all';
+    renderReports(currentReports);
+  });
+  reportCompletedFromEl.addEventListener('change', () => {
+    reportCompletedFrom = reportCompletedFromEl.value || '';
+    renderReports(currentReports);
+  });
+  exportReportsCsvButton.addEventListener('click', () => {
+    try {
+      exportReportsCsv();
+      setMessage(t('reportsCsvDownloaded'), 'ok');
+    } catch (error) {
+      setMessage(error.message || t('reportsRefreshFailed'), 'err');
+    }
+  });
+  refreshReportsButton.addEventListener('click', async () => {
+    try {
+      await loadReports();
+    } catch (error) {
+      setMessage(error.message || t('reportsRefreshFailed'), 'err');
+    }
+  });
   Array.from(jobFilterGridEl.querySelectorAll('.filter-card')).forEach(card => {
     card.addEventListener('click', () => {
       activeJobFilter = card.dataset.filter || 'all';
       renderJobs(currentJobs);
+    });
+  });
+  [reportsHeaderCompletedEl, reportsHeaderJobIdEl, reportsHeaderStatusEl, reportsHeaderLocalRootEl, reportsHeaderRemoteRootEl].forEach(header => {
+    header.addEventListener('click', () => {
+      const nextKey = header.dataset.sortKey;
+      if (!nextKey) {
+        return;
+      }
+      if (reportSortKey === nextKey) {
+        reportSortDirection = reportSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        reportSortKey = nextKey;
+        reportSortDirection = nextKey === 'completedAt' ? 'desc' : 'asc';
+      }
+      renderReports(currentReports);
     });
   });
   tabTransferredEl.addEventListener('click', () => {

@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.report;
+﻿package org.alfresco.contentlake.syncer.report;
 
 import org.alfresco.contentlake.syncer.model.SyncReport;
 import org.junit.jupiter.api.Test;
@@ -25,3 +25,4 @@ class CsvReportWriterTest {
         assertTrue(csv.contains("details,\"contracts\\broken.pdf\",\"sync-file\",\"FAILED\",-1,\"\",\"Access denied\""));
     }
 }
+

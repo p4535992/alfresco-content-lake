@@ -1,9 +1,9 @@
-package org.alfresco.contentlake.syncer.service;
+﻿package org.alfresco.contentlake.syncer.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.alfresco.contentlake.syncer.api.LogEntryView;
-import org.alfresco.contentlake.syncer.api.LogFileInfo;
-import org.alfresco.contentlake.syncer.api.LogViewResponse;
+import org.alfresco.contentlake.syncer.model.api.LogEntryViewDTO;
+import org.alfresco.contentlake.syncer.model.api.LogFileInfoDTO;
+import org.alfresco.contentlake.syncer.model.api.LogViewResponseDTO;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
@@ -29,18 +29,18 @@ public class LogFileService {
     @ConfigProperty(name = "syncer.logs.dir")
     String logsDir;
 
-    public LogViewResponse readLogs(String fileName, int limit) {
+    public LogViewResponseDTO readLogs(String fileName, int limit) {
         int sanitizedLimit = Math.max(20, Math.min(limit, 500));
         Path directory = logsDirectory();
-        List<LogFileInfo> files = listFiles(directory);
+        List<LogFileInfoDTO> files = listFiles(directory);
         String selectedFile = resolveSelectedFileName(fileName, files);
-        List<LogEntryView> entries = selectedFile == null
+        List<LogEntryViewDTO> entries = selectedFile == null
                 ? List.of()
                 : tailEntries(directory.resolve(selectedFile), selectedFile, sanitizedLimit);
-        return new LogViewResponse(directory.toString(), selectedFile, files, entries);
+        return new LogViewResponseDTO(directory.toString(), selectedFile, files, entries);
     }
 
-    private List<LogFileInfo> listFiles(Path directory) {
+    private List<LogFileInfoDTO> listFiles(Path directory) {
         if (!Files.exists(directory)) {
             return List.of();
         }
@@ -50,24 +50,24 @@ public class LogFileService {
                     .filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().startsWith("alfresco-content-syncer"))
                     .map(this::toLogFileInfo)
-                    .sorted(Comparator.comparing(LogFileInfo::modifiedAt, Comparator.nullsLast(Comparator.reverseOrder()))
-                            .thenComparing(LogFileInfo::fileName))
+                    .sorted(Comparator.comparing(LogFileInfoDTO::modifiedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                            .thenComparing(LogFileInfoDTO::fileName))
                     .toList();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to list log files under " + directory, e);
         }
     }
 
-    private LogFileInfo toLogFileInfo(Path path) {
+    private LogFileInfoDTO toLogFileInfo(Path path) {
         try {
             FileTime modifiedAt = Files.getLastModifiedTime(path);
-            return new LogFileInfo(path.getFileName().toString(), Files.size(path), modifiedAt.toInstant());
+            return new LogFileInfoDTO(path.getFileName().toString(), Files.size(path), modifiedAt.toInstant());
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read log metadata for " + path, e);
         }
     }
 
-    private String resolveSelectedFileName(String requestedFileName, List<LogFileInfo> files) {
+    private String resolveSelectedFileName(String requestedFileName, List<LogFileInfoDTO> files) {
         if (files.isEmpty()) {
             return null;
         }
@@ -78,19 +78,19 @@ public class LogFileService {
             throw new IllegalArgumentException("Invalid log file name");
         }
         return files.stream()
-                .map(LogFileInfo::fileName)
+                .map(LogFileInfoDTO::fileName)
                 .filter(requestedFileName::equals)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Log file not found: " + requestedFileName));
     }
 
-    private List<LogEntryView> tailEntries(Path path, String fileName, int limit) {
+    private List<LogEntryViewDTO> tailEntries(Path path, String fileName, int limit) {
         if (!Files.exists(path)) {
             return List.of();
         }
         try {
             List<String> lines = Files.readAllLines(path);
-            List<LogEntryView> entries = new ArrayList<>();
+            List<LogEntryViewDTO> entries = new ArrayList<>();
             LogAccumulator current = null;
             for (String line : lines) {
                 Matcher matcher = LOG_LINE_PATTERN.matcher(line);
@@ -157,8 +157,8 @@ public class LogFileService {
             this.raw.append('\n').append(line);
         }
 
-        private LogEntryView toEntry(String fileName) {
-            return new LogEntryView(
+        private LogEntryViewDTO toEntry(String fileName) {
+            return new LogEntryViewDTO(
                     fileName,
                     timestamp,
                     level,
@@ -170,3 +170,4 @@ public class LogFileService {
         }
     }
 }
+

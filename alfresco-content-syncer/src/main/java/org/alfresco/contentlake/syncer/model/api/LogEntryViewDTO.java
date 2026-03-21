@@ -1,6 +1,6 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.model.api;
 
-public record LogEntryView(
+public record LogEntryViewDTO(
         String fileName,
         String timestamp,
         String level,
@@ -10,3 +10,5 @@ public record LogEntryView(
         String raw
 ) {
 }
+
+

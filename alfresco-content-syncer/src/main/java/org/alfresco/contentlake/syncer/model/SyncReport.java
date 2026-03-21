@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.model;
+﻿package org.alfresco.contentlake.syncer.model;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -24,8 +24,8 @@ public class SyncReport {
     private long uploadedBytes;
     private long updatedBytes;
 
-    private List<SyncFailure> failures = new ArrayList<>();
-    private List<SyncItemResult> items = new ArrayList<>();
+    private List<SyncFailureDTO> failures = new ArrayList<>();
+    private List<SyncItemResultDTO> items = new ArrayList<>();
 
     public SyncReport() {
     }
@@ -158,19 +158,19 @@ public class SyncReport {
         this.updatedBytes = updatedBytes;
     }
 
-    public List<SyncFailure> getFailures() {
+    public List<SyncFailureDTO> getFailures() {
         return failures;
     }
 
-    public void setFailures(List<SyncFailure> failures) {
+    public void setFailures(List<SyncFailureDTO> failures) {
         this.failures = failures;
     }
 
-    public List<SyncItemResult> getItems() {
+    public List<SyncItemResultDTO> getItems() {
         return items;
     }
 
-    public void setItems(List<SyncItemResult> items) {
+    public void setItems(List<SyncItemResultDTO> items) {
         this.items = items;
     }
 
@@ -215,19 +215,20 @@ public class SyncReport {
     }
 
     public void recordFailure(String path, String operation, String message) {
-        failures.add(new SyncFailure(path, operation, message));
-        items.add(new SyncItemResult(path, operation, "FAILED", -1L, null, message));
+        failures.add(new SyncFailureDTO(path, operation, message));
+        items.add(new SyncItemResultDTO(path, operation, "FAILED", -1L, null, message));
     }
 
     public void recordInProgress(String path, String operation, long sizeInBytes, String remoteNodeId, String message) {
-        items.add(new SyncItemResult(path, operation, "IN_PROGRESS", sizeInBytes, remoteNodeId, message));
+        items.add(new SyncItemResultDTO(path, operation, "IN_PROGRESS", sizeInBytes, remoteNodeId, message));
     }
 
     public void recordItem(String path, String operation, String outcome, long sizeInBytes, String remoteNodeId, String message) {
-        items.add(new SyncItemResult(path, operation, outcome, sizeInBytes, remoteNodeId, message));
+        items.add(new SyncItemResultDTO(path, operation, outcome, sizeInBytes, remoteNodeId, message));
     }
 
     public void complete() {
         completedAt = Instant.now();
     }
 }
+

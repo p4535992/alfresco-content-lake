@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.api;
 
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -40,8 +40,8 @@ public class DesktopResource {
 
     @GET
     @Path("/runtime")
-    public RuntimeInfoResponse runtimeInfo() {
-        return new RuntimeInfoResponse(
+    public RuntimeInfoResponseDTO runtimeInfo() {
+        return new RuntimeInfoResponseDTO(
                 "http://" + startupHost + ":" + httpPort + "/",
                 "http://" + dashboardHost + ":" + dashboardPort + "/",
                 "http://" + startupHost + ":" + httpPort + "/settings.html"
@@ -50,13 +50,13 @@ public class DesktopResource {
 
     @GET
     @Path("/settings")
-    public RuntimeSettingsResponse settings() {
+    public RuntimeSettingsResponseDTO settings() {
         return runtimeSettingsService.load();
     }
 
     @POST
     @Path("/settings")
-    public RuntimeSettingsResponse saveSettings(UpdateRuntimeSettingsRequest request) {
+    public RuntimeSettingsResponseDTO saveSettings(UpdateRuntimeSettingsRequestDTO request) {
         try {
             return runtimeSettingsService.save(request);
         } catch (IllegalArgumentException e) {
@@ -68,7 +68,7 @@ public class DesktopResource {
 
     @POST
     @Path("/local-folder/select")
-    public LocalFolderSelectionResponse selectLocalFolder() {
+    public LocalFolderSelectionResponseDTO selectLocalFolder() {
         if (GraphicsEnvironment.isHeadless()) {
             throw new WebApplicationException("Local folder picker is not available in headless mode",
                     Response.Status.SERVICE_UNAVAILABLE);
@@ -94,6 +94,7 @@ public class DesktopResource {
                     Response.Status.INTERNAL_SERVER_ERROR);
         }
 
-        return new LocalFolderSelectionResponse(selectedPath.get());
+        return new LocalFolderSelectionResponseDTO(selectedPath.get());
     }
 }
+

@@ -1,6 +1,6 @@
-package org.alfresco.contentlake.syncer.model;
+﻿package org.alfresco.contentlake.syncer.model;
 
-public class SyncItemResult {
+public class SyncItemResultDTO {
 
     private String path;
     private String operation;
@@ -9,10 +9,10 @@ public class SyncItemResult {
     private String remoteNodeId;
     private String message;
 
-    public SyncItemResult() {
+    public SyncItemResultDTO() {
     }
 
-    public SyncItemResult(String path, String operation, String outcome, long sizeInBytes, String remoteNodeId, String message) {
+    public SyncItemResultDTO(String path, String operation, String outcome, long sizeInBytes, String remoteNodeId, String message) {
         this.path = path;
         this.operation = operation;
         this.outcome = outcome;
@@ -69,3 +69,5 @@ public class SyncItemResult {
         this.message = message;
     }
 }
+
+

@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.model;
+﻿package org.alfresco.contentlake.syncer.model;
 
 import java.time.Instant;
 
@@ -61,3 +61,4 @@ public class SyncStateEntry {
         this.remoteModifiedAt = remoteModifiedAt;
     }
 }
+

@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.api;
 
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +11,7 @@ class StartSyncRequestTest {
 
     @Test
     void rejectsBaseUrlWithoutAlfrescoSuffix() {
-        StartSyncRequest request = new StartSyncRequest();
+        StartSyncRequestDTO request = new StartSyncRequestDTO();
         request.alfrescoBaseUrl = "http://localhost:8080";
         request.username = "admin";
         request.password = "admin";
@@ -23,7 +23,7 @@ class StartSyncRequestTest {
 
     @Test
     void appliesDefaultCsvReportOutputWhenBlank() {
-        StartSyncRequest request = new StartSyncRequest();
+        StartSyncRequestDTO request = new StartSyncRequestDTO();
 
         request.applyDefaultReportOutput("job-123");
 
@@ -31,3 +31,4 @@ class StartSyncRequestTest {
         assertTrue(Path.of(request.reportOutput).isAbsolute());
     }
 }
+

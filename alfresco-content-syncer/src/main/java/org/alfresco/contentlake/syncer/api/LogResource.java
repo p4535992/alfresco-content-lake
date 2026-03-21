@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.api;
+﻿package org.alfresco.contentlake.syncer.api;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
@@ -19,7 +19,7 @@ public class LogResource {
     LogFileService logFileService;
 
     @GET
-    public LogViewResponse readLogs(
+    public LogViewResponseDTO readLogs(
             @QueryParam("file") String fileName,
             @QueryParam("limit") @DefaultValue("200") int limit
     ) {
@@ -32,3 +32,4 @@ public class LogResource {
         }
     }
 }
+

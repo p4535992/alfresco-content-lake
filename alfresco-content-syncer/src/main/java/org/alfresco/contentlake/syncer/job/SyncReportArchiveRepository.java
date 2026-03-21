@@ -1,4 +1,4 @@
-package org.alfresco.contentlake.syncer.job;
+﻿package org.alfresco.contentlake.syncer.job;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -86,3 +86,4 @@ public class SyncReportArchiveRepository {
         }
     }
 }
+
