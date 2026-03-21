@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.api;
+package org.alfresco.contentlake.syncer.api;
 
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -9,6 +9,10 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.inject.Inject;
+import org.alfresco.contentlake.syncer.model.api.LocalFolderSelectionResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.RuntimeInfoResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.RuntimeSettingsResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.UpdateRuntimeSettingsRequestDTO;
 import org.alfresco.contentlake.syncer.service.RuntimeSettingsService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 

@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.service;
+package org.alfresco.contentlake.syncer.service;
 
 import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.alfresco.contentlake.syncer.model.RemoteNodeDTO;

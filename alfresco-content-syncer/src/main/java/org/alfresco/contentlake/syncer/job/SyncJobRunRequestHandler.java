@@ -1,15 +1,16 @@
-﻿package org.alfresco.contentlake.syncer.job;
+package org.alfresco.contentlake.syncer.job;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.alfresco.contentlake.syncer.model.SyncReport;
+import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
+import org.alfresco.contentlake.syncer.model.job.SyncJobRunRequestDTO;
 import org.alfresco.contentlake.syncer.service.LocalFolderSyncService;
 import org.jobrunr.jobs.lambdas.JobRequestHandler;
 import org.jboss.logging.Logger;
 
 @ApplicationScoped
-public class SyncJobRunRequestHandler implements JobRequestHandler<SyncJobRunRequest> {
+public class SyncJobRunRequestHandler implements JobRequestHandler<SyncJobRunRequestDTO> {
 
     private static final Logger LOG = Logger.getLogger(SyncJobRunRequestHandler.class);
 
@@ -23,7 +24,7 @@ public class SyncJobRunRequestHandler implements JobRequestHandler<SyncJobRunReq
     LocalFolderSyncService localFolderSyncService;
 
     @Override
-    public void run(SyncJobRunRequest jobRequest) throws Exception {
+    public void run(SyncJobRunRequestDTO jobRequest) throws Exception {
         String syncJobId = jobRequest.getSyncJobId();
         StartSyncRequestDTO request = syncJobRequestStore.load(syncJobId);
         syncJobService.markRunning(syncJobId, request);

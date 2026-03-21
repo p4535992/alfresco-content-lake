@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.model;
+package org.alfresco.contentlake.syncer.model;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

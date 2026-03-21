@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.client;
+package org.alfresco.contentlake.syncer.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

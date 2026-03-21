@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.report;
+package org.alfresco.contentlake.syncer.report;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.alfresco.contentlake.syncer.model.SyncItemResultDTO;

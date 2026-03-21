@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.job;
+package org.alfresco.contentlake.syncer.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;

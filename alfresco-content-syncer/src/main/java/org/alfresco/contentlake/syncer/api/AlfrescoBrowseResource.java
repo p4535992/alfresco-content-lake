@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.api;
+package org.alfresco.contentlake.syncer.api;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -10,6 +10,11 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.alfresco.contentlake.syncer.client.AlfrescoHttpClient;
 import org.alfresco.contentlake.syncer.model.RemoteNodeDTO;
+import org.alfresco.contentlake.syncer.model.api.AlfrescoConnectionPayloadDTO;
+import org.alfresco.contentlake.syncer.model.api.AlfrescoConnectionStatusResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.AlfrescoSiteBrowseRequestDTO;
+import org.alfresco.contentlake.syncer.model.api.AlfrescoSiteFolderBrowseResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.AlfrescoSiteInfoDTO;
 
 import java.util.List;
 

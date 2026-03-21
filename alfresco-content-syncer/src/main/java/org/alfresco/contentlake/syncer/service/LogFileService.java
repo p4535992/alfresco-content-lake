@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.service;
+package org.alfresco.contentlake.syncer.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.alfresco.contentlake.syncer.model.api.LogEntryViewDTO;

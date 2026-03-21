@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.model.api;
+package org.alfresco.contentlake.syncer.model.api;
 
 public class AlfrescoSiteBrowseRequestDTO extends AlfrescoConnectionPayloadDTO {
 

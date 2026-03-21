@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.service;
+package org.alfresco.contentlake.syncer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;

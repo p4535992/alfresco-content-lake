@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.api;
+package org.alfresco.contentlake.syncer.api;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;

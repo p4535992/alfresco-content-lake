@@ -1,5 +1,6 @@
-﻿package org.alfresco.contentlake.syncer.api;
+package org.alfresco.contentlake.syncer.api;
 
+import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;

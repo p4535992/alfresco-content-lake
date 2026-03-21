@@ -1,5 +1,6 @@
-﻿package org.alfresco.contentlake.syncer.api;
+package org.alfresco.contentlake.syncer.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -12,10 +13,11 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.alfresco.contentlake.syncer.job.SyncJobService;
 import org.alfresco.contentlake.syncer.job.SyncReportArchiveRepository;
-import org.alfresco.contentlake.syncer.model.api.JobRunrSummaryResponseDTO;
 import org.alfresco.contentlake.syncer.model.SyncJob;
+import org.alfresco.contentlake.syncer.model.api.JobRunrSummaryResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
+import org.alfresco.contentlake.syncer.model.api.SyncReportHistoryEntryDTO;
 import org.alfresco.contentlake.syncer.report.CsvReportWriter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Collection;
 import java.util.Comparator;

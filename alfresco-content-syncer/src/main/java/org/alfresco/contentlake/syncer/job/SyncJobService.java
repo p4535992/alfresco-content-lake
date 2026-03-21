@@ -1,13 +1,14 @@
-﻿package org.alfresco.contentlake.syncer.job;
+package org.alfresco.contentlake.syncer.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
-import org.alfresco.contentlake.syncer.model.api.JobRunrSummaryResponseDTO;
 import org.alfresco.contentlake.syncer.model.SyncJob;
-import org.alfresco.contentlake.syncer.model.SyncJobStatus;
 import org.alfresco.contentlake.syncer.model.SyncReport;
+import org.alfresco.contentlake.syncer.model.SyncJobStatus;
+import org.alfresco.contentlake.syncer.model.api.JobRunrSummaryResponseDTO;
+import org.alfresco.contentlake.syncer.model.api.StartSyncRequestDTO;
+import org.alfresco.contentlake.syncer.model.job.SyncJobRunRequestDTO;
 import org.jboss.logging.Logger;
 import org.jobrunr.jobs.JobId;
 import org.jobrunr.jobs.states.StateName;
@@ -69,7 +70,7 @@ public class SyncJobService {
         String jobRunrId = String.valueOf(jobRequestScheduler.create(JobBuilder.aJob()
                 .withName("Alfresco content sync " + jobId)
                 .withAmountOfRetries(0)
-                .withJobRequest(new SyncJobRunRequest(jobId))));
+                .withJobRequest(new SyncJobRunRequestDTO(jobId))));
         job.setJobRunrId(jobRunrId);
         syncJobRepository.save(job);
         LOG.infof(

@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.service;
+package org.alfresco.contentlake.syncer.service;
 
 import org.alfresco.contentlake.syncer.model.api.RuntimeSettingsResponseDTO;
 import org.alfresco.contentlake.syncer.model.api.UpdateRuntimeSettingsRequestDTO;

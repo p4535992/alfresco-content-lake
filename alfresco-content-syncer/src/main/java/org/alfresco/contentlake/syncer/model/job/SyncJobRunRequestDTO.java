@@ -1,15 +1,16 @@
-﻿package org.alfresco.contentlake.syncer.job;
+package org.alfresco.contentlake.syncer.model.job;
 
+import org.alfresco.contentlake.syncer.job.SyncJobRunRequestHandler;
 import org.jobrunr.jobs.lambdas.JobRequest;
 
-public class SyncJobRunRequest implements JobRequest {
+public class SyncJobRunRequestDTO implements JobRequest {
 
     private String syncJobId;
 
-    public SyncJobRunRequest() {
+    public SyncJobRunRequestDTO() {
     }
 
-    public SyncJobRunRequest(String syncJobId) {
+    public SyncJobRunRequestDTO(String syncJobId) {
         this.syncJobId = syncJobId;
     }
 
@@ -26,4 +27,3 @@ public class SyncJobRunRequest implements JobRequest {
         return SyncJobRunRequestHandler.class;
     }
 }
-

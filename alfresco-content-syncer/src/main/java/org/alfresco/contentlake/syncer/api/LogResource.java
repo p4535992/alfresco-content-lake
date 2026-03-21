@@ -1,4 +1,4 @@
-﻿package org.alfresco.contentlake.syncer.api;
+package org.alfresco.contentlake.syncer.api;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
@@ -9,6 +9,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.alfresco.contentlake.syncer.model.api.LogViewResponseDTO;
 import org.alfresco.contentlake.syncer.service.LogFileService;
 
 @Path("/api/logs")
